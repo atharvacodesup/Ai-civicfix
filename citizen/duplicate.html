@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Similar Problem Found — AI CivicFix</title>
+  <link rel="stylesheet" href="../css/style.css">
+  <link rel="stylesheet" href="../css/citizen.css">
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+</head>
+<body class="citizen-page">
+  <div id="header-mount"></div>
+
+  <main class="citizen-content">
+    <div class="container">
+      <div class="incident-highlight">
+        <!-- Left Side: Incident Information -->
+        <div class="card">
+          <div id="dup-kicker" class="kicker">Similar problem found</div>
+          <h1 id="dup-heading" style="font-size:32px;margin:8px 0 12px;line-height:1.15;">A similar civic problem has already been reported nearby.</h1>
+          <p id="dup-subheading" class="muted" style="margin-bottom:20px;">Your evidence will be added to this physical issue so municipal crews address it as one collective problem.</p>
+
+          <div class="grid grid-2">
+            <div class="card no-shadow metric" style="border:1px solid var(--blue-mid);padding:18px;">
+              <span class="metric-label">Distance</span>
+              <span id="dup-distance-val" class="metric-value">--</span>
+            </div>
+            <div class="card no-shadow metric" style="border:1px solid var(--blue-mid);padding:18px;">
+              <span id="dup-reports-label" class="metric-label">Reports</span>
+              <span id="dup-reports-val" class="metric-value">0</span>
+            </div>
+          </div>
+
+          <div class="address-card" style="margin-top:20px;">
+            <div id="dup-master-kicker" class="kicker">Master Incident</div>
+            <h2 id="dup-master-id" style="font-size:26px;margin:4px 0 6px;">Checking...</h2>
+            <p id="dup-master-info" style="margin-bottom:0;font-weight:700;">Scanning 100m spatial proximity...</p>
+          </div>
+
+          <div id="dup-callout" class="callout" style="margin-top:18px;">
+            Checking for nearby related reports in Kolhapur...
+          </div>
+
+          <div class="row" style="margin-top:22px;">
+            <button id="add-report-btn" type="button" class="primary-btn" style="flex:1;">
+              ADD MY REPORT ➔
+            </button>
+            <button id="dup-secondary-btn" type="button" class="secondary-btn" onclick="alert('Master Incident: Reports linked to this physical issue coordinate municipal crew dispatch.')">
+              VIEW DETAILS
+            </button>
+          </div>
+        </div>
+
+        <!-- Right Side: Mini Map -->
+        <div class="card">
+          <div class="kicker" style="margin-bottom:10px;">Nearby evidence map</div>
+          <div id="citizen-mini-map" class="map" style="height:380px;"></div>
+          <p id="dup-map-caption" class="muted" style="font-size:14px;margin-top:12px;margin-bottom:0;">
+            100m radius cluster. Blue markers show citizen reports documenting civic issues in this area.
+          </p>
+        </div>
+      </div>
+
+      <div style="text-align:center;margin-top:28px;">
+        <span class="demo-label">AI CivicFix — Hackathon Prototype</span>
+      </div>
+    </div>
+  </main>
+
+  <div id="nav-mount"></div>
+
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <script src="../js/mock-data.js"></script>
+  <script src="../js/state.js"></script>
+  <script type="module" src="../js/auth.js"></script>
+  <script type="module" src="../js/duplicate-service.js"></script>
+  <script src="../js/services.js"></script>
+  <script src="../js/map.js"></script>
+  <script src="../js/citizen.js"></script>
+  <script src="../js/app.js"></script>
+  <script>
+    document.getElementById("header-mount").innerHTML = renderGlobalHeader({ role: "citizen" });
+    document.getElementById("nav-mount").innerHTML = renderCitizenNav("report");
+    CitizenApp.initDuplicate();
+  </script>
+</body>
+</html>

@@ -1,0 +1,126 @@
+{
+  "type": "FeatureCollection",
+  "name": "KMC_Final_Ward_Formation_2025",
+  "crs": {
+    "type": "name",
+    "properties": {
+      "name": "urn:ogc:def:crs:OGC:1.3:CRS84"
+    }
+  },
+  "features": [
+    {
+      "type": "Feature",
+      "properties": {
+        "wardNumber": "20",
+        "wardName": "Ward 20 — Salokhe Nagar / Kalamba / Prathamesh Nagar",
+        "authority": "Kolhapur Municipal Corporation",
+        "electionYear": "2025",
+        "keyLocalities": ["Prathamesh Nagar", "Salokhe Nagar", "Kalamba", "Shenda Park South"]
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [74.2120, 16.6950],
+            [74.2380, 16.6960],
+            [74.2560, 16.6950],
+            [74.2580, 16.6750],
+            [74.2480, 16.6560],
+            [74.2250, 16.6550],
+            [74.2100, 16.6620],
+            [74.2080, 16.6780],
+            [74.2120, 16.6950]
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "wardNumber": "18",
+        "wardName": "Ward 18 — Rajarampuri / Shahupuri South",
+        "authority": "Kolhapur Municipal Corporation",
+        "electionYear": "2025",
+        "keyLocalities": ["Rajarampuri Main", "Sykes Extension", "Shahupuri"]
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [74.2380, 16.7120],
+            [74.2620, 16.7120],
+            [74.2650, 16.6960],
+            [74.2380, 16.6960],
+            [74.2380, 16.7120]
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "wardNumber": "1",
+        "wardName": "Ward 1 — Kasba Bawada",
+        "authority": "Kolhapur Municipal Corporation",
+        "electionYear": "2025",
+        "keyLocalities": ["Kasba Bawada", "Circuit House", "Panchganga North"]
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [74.2200, 16.7380],
+            [74.2500, 16.7360],
+            [74.2520, 16.7200],
+            [74.2200, 16.7220],
+            [74.2200, 16.7380]
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "wardNumber": "2",
+        "wardName": "Ward 2 — Tarabai Park / Nagala Park",
+        "authority": "Kolhapur Municipal Corporation",
+        "electionYear": "2025",
+        "keyLocalities": ["Tarabai Park", "Nagala Park", "Collector Office Area"]
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [74.2200, 16.7220],
+            [74.2480, 16.7200],
+            [74.2480, 16.7100],
+            [74.2200, 16.7110],
+            [74.2200, 16.7220]
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "wardNumber": "14",
+        "wardName": "Ward 14 — Shahupuri / Station Area",
+        "authority": "Kolhapur Municipal Corporation",
+        "electionYear": "2025",
+        "keyLocalities": ["Railway Station Area", "Central Bus Stand", "Venus Corner"]
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [74.2480, 16.7150],
+            [74.2750, 16.7150],
+            [74.2750, 16.6980],
+            [74.2480, 16.6980],
+            [74.2480, 16.7150]
+          ]
+        ]
+      }
+    }
+  ]
+}

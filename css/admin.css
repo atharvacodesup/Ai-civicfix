@@ -1,0 +1,280 @@
+/* =========================================================
+   AI CivicFix — Admin Application Styles
+   Namespace: .admin-*
+   Theme: #0B3D91 and #FFFFFF
+   ========================================================= */
+
+.admin-layout {
+  min-height: 100vh;
+  display: grid;
+  grid-template-columns: 260px 1fr;
+  background: var(--white);
+}
+
+.sidebar {
+  border-right: 1px solid var(--blue-mid);
+  padding: 22px 16px;
+  background: var(--white);
+  position: sticky;
+  top: 0;
+  height: 100vh;
+  overflow-y: auto;
+}
+
+.sidebar-nav {
+  display: grid;
+  gap: 6px;
+  margin-top: 24px;
+}
+
+.sidebar-nav a,
+.sidebar-nav button {
+  text-align: left;
+  border: 1px solid transparent;
+  background: transparent;
+  color: var(--blue);
+  padding: 13px 12px;
+  border-radius: 10px;
+  font-weight: 800;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  text-decoration: none;
+  cursor: pointer;
+  font-size: 15px;
+}
+
+.sidebar-nav a:hover,
+.sidebar-nav button:hover,
+.sidebar-nav a.active,
+.sidebar-nav button.active {
+  border-color: var(--blue);
+  background: var(--blue-light);
+}
+
+.admin-main {
+  min-width: 0;
+  background: var(--white);
+}
+
+.admin-topbar {
+  height: 72px;
+  border-bottom: 1px solid var(--blue-mid);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0 24px;
+  position: sticky;
+  top: 0;
+  z-index: 40;
+  background: var(--white);
+}
+
+.admin-content {
+  padding: 28px;
+}
+
+.table-wrap {
+  overflow-x: auto;
+  border-radius: var(--radius);
+}
+
+.data-table {
+  width: 100%;
+  border-collapse: collapse;
+  min-width: 820px;
+}
+
+.data-table th,
+.data-table td {
+  border-bottom: 1px solid var(--blue-mid);
+  padding: 14px 12px;
+  text-align: left;
+  vertical-align: top;
+}
+
+.data-table th {
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--blue);
+  background: var(--white);
+}
+
+.data-table tr.clickable {
+  cursor: pointer;
+}
+
+.data-table tr.clickable:hover {
+  background: var(--blue-light);
+}
+
+.action-card {
+  border: 3px solid var(--blue);
+  border-radius: 18px;
+  padding: 24px;
+  background: var(--white);
+}
+
+.evidence-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.evidence-card {
+  border: 1px solid var(--blue-mid);
+  border-radius: 14px;
+  padding: 12px;
+  background: var(--white);
+}
+
+.evidence-card img {
+  aspect-ratio: 4 / 3;
+  object-fit: cover;
+  border-radius: 10px;
+  border: 1px solid var(--blue-mid);
+  margin-bottom: 8px;
+  width: 100%;
+}
+
+.map {
+  height: 460px;
+  border-radius: 16px;
+  overflow: hidden;
+  border: 2px solid var(--blue);
+}
+
+.chart-box {
+  min-height: 340px;
+}
+
+.role-banner {
+  background: var(--blue);
+  color: var(--white);
+  border-radius: 16px;
+  padding: 20px 22px;
+  margin-bottom: 24px;
+}
+
+.role-banner h2,
+.role-banner p {
+  color: var(--white);
+}
+
+/* ---------- Responsive Admin ---------- */
+
+@media (max-width: 960px) {
+  .evidence-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 760px) {
+  .admin-layout {
+    display: block;
+  }
+
+  .sidebar {
+    position: relative;
+    height: auto;
+    border-right: 0;
+    border-bottom: 1px solid var(--blue-mid);
+  }
+
+  .sidebar-nav {
+    display: flex;
+    overflow-x: auto;
+    margin-top: 12px;
+  }
+
+  .sidebar-nav a,
+  .sidebar-nav button {
+    white-space: nowrap;
+  }
+
+  .admin-topbar {
+    padding: 0 16px;
+  }
+
+  .admin-content {
+    padding: 20px 16px 60px;
+  }
+
+  .data-table {
+    min-width: 760px;
+  }
+
+  .evidence-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .map {
+    height: 360px;
+  }
+}
+
+/* =========================================================
+   Department Report Detail Modal & Evidence Zoom
+   ========================================================= */
+
+.dept-modal-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(11, 61, 145, 0.45);
+  backdrop-filter: blur(2px);
+  z-index: 999;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+}
+
+.dept-modal-backdrop.hidden {
+  display: none !important;
+}
+
+.dept-modal-card {
+  background: var(--white);
+  border: 2px solid var(--blue);
+  border-radius: 16px;
+  width: min(760px, 100%);
+  max-height: 90vh;
+  overflow-y: auto;
+  box-shadow: 0 12px 40px rgba(11, 61, 145, 0.2);
+  padding: 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.dept-modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border-bottom: 1px solid var(--blue-mid);
+  padding-bottom: 12px;
+}
+
+.dept-modal-body {
+  display: grid;
+  grid-template-columns: 1fr 1.2fr;
+  gap: 20px;
+  align-items: start;
+}
+
+@media (max-width: 680px) {
+  .dept-modal-body {
+    grid-template-columns: 1fr;
+  }
+}
+
+.dept-thumb-click {
+  transition: transform 140ms ease, box-shadow 140ms ease;
+}
+
+.dept-thumb-click:hover {
+  transform: scale(1.08);
+  box-shadow: 0 4px 12px rgba(11, 61, 145, 0.25);
+}
+

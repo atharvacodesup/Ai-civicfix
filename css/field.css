@@ -1,0 +1,41 @@
+/* =========================================================
+   AI CivicFix — Field Officer Application Styles
+   Namespace: .field-*
+   Theme: #0B3D91 and #FFFFFF
+   ========================================================= */
+
+.field-page {
+  min-height: 100vh;
+  background: var(--white);
+}
+
+.field-main {
+  width: min(760px, calc(100% - 32px));
+  margin: 0 auto;
+  padding: 32px 0 90px;
+}
+
+.work-card {
+  border: 2px solid var(--blue);
+  border-radius: 18px;
+  padding: 24px;
+  background: var(--white);
+  box-shadow: var(--shadow);
+}
+
+.work-status {
+  font-size: 24px;
+  font-weight: 950;
+  color: var(--blue);
+  margin-bottom: 12px;
+}
+
+@media (max-width: 760px) {
+  .field-main {
+    padding: 20px 0 80px;
+  }
+
+  .work-card {
+    padding: 18px;
+  }
+}

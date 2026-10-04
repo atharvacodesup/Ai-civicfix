@@ -1,0 +1,2198 @@
+// =========================================================
+// AI CivicFix — Citizen Application Logic
+// Handles photo upload, AI demo, location, duplicate check,
+// confirmation, submission, tracking, and verification.
+// =========================================================
+
+window.CitizenApp = {
+  initHeaderProfile() {
+    const update = () => {
+      const user = (window.Auth && window.Auth.getCurrentUser()) || window.AppState?.currentUser;
+      const nameEl = document.getElementById("citizen-header-name");
+      const avatarEl = document.getElementById("citizen-header-avatar");
+      let displayName = user?.name || user?.displayName || "";
+      if (displayName) {
+        if (nameEl) nameEl.textContent = displayName;
+        if (avatarEl) avatarEl.textContent = displayName.trim().charAt(0).toUpperCase();
+      } else {
+        if (nameEl) nameEl.textContent = "Citizen";
+        if (avatarEl) avatarEl.textContent = "C";
+      }
+    };
+    update();
+    if (window.Auth?.onAuthStateChanged && !this._authBound) {
+      this._authBound = true;
+      window.Auth.onAuthStateChanged(update);
+    }
+  },
+
+  // 1. Home
+  async initHome() {
+    this.initHeaderProfile();
+    // 1. Authenticated User Profile & Greeting
+    const user = (window.Auth && window.Auth.getCurrentUser()) || window.AppState?.currentUser;
+    const nameEl = document.getElementById("citizen-header-name");
+    const avatarEl = document.getElementById("citizen-header-avatar");
+    const heroHeading = document.getElementById("citizen-hero-heading");
+
+    let displayName = user?.name || user?.displayName || "";
+    if (displayName) {
+      if (nameEl) nameEl.textContent = displayName;
+      if (avatarEl) avatarEl.textContent = displayName.trim().charAt(0).toUpperCase();
+      const firstName = displayName.trim().split(/\s+/)[0];
+      if (heroHeading) {
+        heroHeading.textContent = `Report a Civic Problem, ${firstName}`;
+      }
+    } else {
+      if (nameEl) nameEl.textContent = "Citizen";
+      if (avatarEl) avatarEl.textContent = "C";
+      if (heroHeading) heroHeading.textContent = "Report a Civic Problem";
+    }
+
+    // 2. Fetch real Firestore reports
+    const container = document.getElementById("citizen-recent-reports-container") || document.getElementById("citizen-recent-reports");
+    const activeCountEl = document.getElementById("summary-active-count");
+    const resolvedCountEl = document.getElementById("summary-resolved-count");
+    const totalCountEl = document.getElementById("summary-total-count");
+    const quickTrackLink = document.getElementById("quick-track-link");
+
+    if (!container) return;
+
+    try {
+      let service = window.ReportsService;
+      if (!service) {
+        try {
+          service = await import("../js/reports.js");
+        } catch (e) {
+          service = await import("/js/reports.js");
+        }
+      }
+
+      const authUser = await (service?.getAuthenticatedUser ? service.getAuthenticatedUser() : window.getCurrentFirebaseUser?.());
+      const uid = authUser?.uid || user?.uid;
+
+      if (!uid) {
+        if (activeCountEl) activeCountEl.textContent = "0";
+        if (resolvedCountEl) resolvedCountEl.textContent = "0";
+        if (totalCountEl) totalCountEl.textContent = "0";
+        container.innerHTML = `
+          <div class="empty-reports-panel">
+            <div class="empty-reports-badge" aria-hidden="true">📋</div>
+            <h3 class="empty-reports-heading">No reports yet</h3>
+            <p class="empty-reports-message">Your submitted civic problems will appear here once you file a report.</p>
+          </div>
+        `;
+        return;
+      }
+
+      const reports = await service.getCitizenReports(uid);
+
+      if (!reports || reports.length === 0) {
+        if (activeCountEl) activeCountEl.textContent = "0";
+        if (resolvedCountEl) resolvedCountEl.textContent = "0";
+        if (totalCountEl) totalCountEl.textContent = "0";
+        container.innerHTML = `
+          <div class="empty-reports-panel">
+            <div class="empty-reports-badge" aria-hidden="true">📋</div>
+            <h3 class="empty-reports-heading">No reports yet</h3>
+            <p class="empty-reports-message">Your submitted civic problems will appear here once you file a report.</p>
+          </div>
+        `;
+        return;
+      }
+
+      // Compute active, resolved & total counts
+      const activeCount = reports.filter(r => {
+        const s = (r.status || "").toUpperCase();
+        return s !== "RESOLVED" && s !== "CLOSED";
+      }).length;
+      const resolvedCount = reports.filter(r => {
+        const s = (r.status || "").toUpperCase();
+        return s === "RESOLVED" || s === "CLOSED";
+      }).length;
+      const totalCount = reports.length;
+
+      if (activeCountEl) activeCountEl.textContent = activeCount;
+      if (resolvedCountEl) resolvedCountEl.textContent = resolvedCount;
+      if (totalCountEl) totalCountEl.textContent = totalCount;
+
+      if (quickTrackLink && reports[0] && reports[0].id) {
+        quickTrackLink.href = `track.html?id=${encodeURIComponent(reports[0].id)}`;
+      }
+
+      // Display up to 3 most recent reports across desktop grid
+      const recentReports = reports.slice(0, 3);
+      container.innerHTML = recentReports.map((rep) => {
+        const displayId = "CF-" + (rep.id || "").slice(0, 8).toUpperCase();
+        const categoryText = rep.category ? rep.category : "Pending analysis";
+        const locationText = rep.locationText || "Location pending";
+        const rawStatus = (rep.status || "SUBMITTED").toUpperCase();
+
+        let statusLabel = "○ Submitted";
+        let statusClass = "submitted";
+        if (rawStatus === "RESOLVED" || rawStatus === "CLOSED") {
+          statusLabel = "✓ Resolved";
+          statusClass = "resolved";
+        } else if (rawStatus === "IN PROGRESS" || rawStatus === "IN_PROGRESS" || rawStatus === "ROUTED" || rawStatus === "ASSIGNED") {
+          statusLabel = "● In Progress";
+          statusClass = "in-progress";
+        } else if (rawStatus !== "SUBMITTED") {
+          statusLabel = `○ ${rep.status}`;
+        }
+
+        const dateStr = service?.formatReportDate ? service.formatReportDate(rep.createdAt || rep.rawCreatedAt) : "";
+
+        return `
+          <a href="track.html?id=${encodeURIComponent(rep.id)}" class="report-card-item">
+            <div class="report-card-media">
+              ${rep.imageUrl ? `
+                <img src="${window.esc(rep.imageUrl)}" alt="${window.esc(categoryText)}" class="report-thumb-img" loading="lazy">
+              ` : `
+                <div class="report-thumb-empty" aria-hidden="true">📷</div>
+              `}
+              <span class="report-card-status-pill status-${statusClass}">${statusLabel}</span>
+            </div>
+            <div class="report-card-content">
+              <div class="report-card-top-info">
+                <h4 class="report-card-category">${window.esc(categoryText)}</h4>
+                <div class="report-card-location">${window.esc(locationText)}</div>
+              </div>
+              <div class="report-card-footer">
+                <div class="report-card-meta">
+                  <span class="report-card-id">${window.esc(displayId)}</span>
+                  ${dateStr ? `<span class="report-card-date">· ${window.esc(dateStr)}</span>` : ""}
+                </div>
+                <span class="report-card-action">VIEW REPORT ➔</span>
+              </div>
+            </div>
+          </a>
+        `;
+      }).join("");
+
+    } catch (err) {
+      console.error("Error loading citizen dashboard reports:", err);
+      if (activeCountEl) activeCountEl.textContent = "0";
+      if (resolvedCountEl) resolvedCountEl.textContent = "0";
+      if (totalCountEl) totalCountEl.textContent = "0";
+      container.innerHTML = `
+        <div class="empty-reports-panel">
+          <div class="empty-reports-badge" aria-hidden="true">📋</div>
+          <h3 class="empty-reports-heading">No reports yet</h3>
+          <p class="empty-reports-message">Your submitted civic problems will appear here once you file a report.</p>
+        </div>
+      `;
+    }
+  },
+
+  // 2. Report & Photo Upload
+  initReport() {
+    this.initHeaderProfile();
+    const input = document.getElementById("photo-input");
+    const preview = document.getElementById("photo-preview-wrap");
+    const emptyZone = document.getElementById("empty-upload-zone");
+    const continueBtn = document.getElementById("continue-btn");
+    const descInput = document.getElementById("citizen-description");
+    const errorEl = document.getElementById("upload-error");
+
+    const showError = (msg) => {
+      if (errorEl) {
+        errorEl.textContent = msg;
+        errorEl.classList.remove("hidden");
+      } else {
+        alert(msg);
+      }
+    };
+
+    const clearError = () => {
+      if (errorEl) {
+        errorEl.textContent = "";
+        errorEl.classList.add("hidden");
+      }
+    };
+
+    if (window.AppState.imageUrl || window.AppState.selectedImage) {
+      this.showImagePreview(window.AppState.imageUrl || window.AppState.selectedImage);
+    }
+
+    let activeUploadPromise = null;
+
+    const performUpload = async (file) => {
+      if (!file) return null;
+
+      // During upload: disable the relevant action/button and show a simple "Uploading..." state.
+      if (continueBtn) {
+        continueBtn.disabled = true;
+        continueBtn.textContent = "Uploading...";
+      }
+
+      try {
+        let uploadFn = window.uploadImageToCloudinary;
+        if (!uploadFn && typeof window.CivicService?.uploadImage === "function") {
+          uploadFn = window.CivicService.uploadImage;
+        }
+
+        if (!uploadFn) {
+          try {
+            const mod = await import("../js/cloudinary.js");
+            uploadFn = mod.uploadImageToCloudinary || window.uploadImageToCloudinary;
+          } catch (e) {
+            try {
+              const mod2 = await import("/js/cloudinary.js");
+              uploadFn = mod2.uploadImageToCloudinary || window.uploadImageToCloudinary;
+            } catch (e2) {
+              console.error("Could not load cloudinary module:", e2);
+            }
+          }
+        }
+
+        if (!uploadFn) {
+          throw new Error("Cloudinary upload service not available.");
+        }
+
+        const result = await uploadFn(file);
+
+        const secureUrl = typeof result === "string" ? result : (result?.imageUrl || result?.secure_url);
+        const publicId = (typeof result === "object" && result) ? (result.publicId || result.public_id || null) : null;
+
+        if (!secureUrl) {
+          throw new Error("No secure URL received from upload.");
+        }
+
+        // Store them in the existing application state.
+        // For example: imageUrl, cloudinaryPublicId
+        window.AppState.imageUrl = secureUrl;
+        window.AppState.cloudinaryPublicId = publicId;
+        window.AppState.selectedImage = secureUrl;
+        window.AppState.selectedFile = null;
+        window.saveState();
+
+        // If upload succeeds: keep the image preview
+        this.showImagePreview(secureUrl);
+
+        if (continueBtn) {
+          continueBtn.disabled = false;
+          continueBtn.textContent = "CONTINUE ➔";
+        }
+
+        return { secureUrl, publicId };
+      } catch (err) {
+        console.error("Cloudinary upload failed:", err);
+        if (continueBtn) {
+          continueBtn.disabled = false;
+          continueBtn.textContent = "CONTINUE ➔";
+        }
+        // If upload fails: show: "Image upload failed. Please try again."
+        showError("Image upload failed. Please try again.");
+        return null;
+      }
+    };
+
+    if (input) {
+      input.addEventListener("change", (e) => {
+        clearError();
+        const file = e.target.files[0];
+        if (!file) return;
+
+        // VALIDATION:
+        // - JPG
+        // - JPEG
+        // - PNG
+        // - WEBP
+        // - Maximum 5 MB
+        const fileName = file.name || "";
+        const fileExt = fileName.slice(((fileName.lastIndexOf(".") - 1) >>> 0) + 2).toLowerCase();
+        const allowedExtensions = ["jpg", "jpeg", "png", "webp"];
+        const allowedMimeTypes = ["image/jpeg", "image/png", "image/webp"];
+
+        if (!allowedMimeTypes.includes(file.type) && !allowedExtensions.includes(fileExt)) {
+          showError("Please select a JPG, PNG, or WEBP image.");
+          input.value = "";
+          return;
+        }
+
+        const maxSize = 5 * 1024 * 1024;
+        if (file.size > maxSize) {
+          showError("Image must be smaller than 5 MB.");
+          input.value = "";
+          return;
+        }
+
+        // Keep the selected File object in existing state
+        window.AppState.selectedFile = file;
+
+        // Existing image preview appears
+        const reader = new FileReader();
+        reader.onload = (event) => {
+          const localPreview = event.target.result;
+          window.AppState.selectedImage = localPreview;
+          try {
+            sessionStorage.setItem("civicfix_analysis_image", localPreview);
+          } catch (e) {
+            console.warn("Could not save to sessionStorage:", e);
+          }
+          this.showImagePreview(localPreview);
+
+          // Trigger upload to Cloudinary
+          activeUploadPromise = performUpload(file).finally(() => {
+            activeUploadPromise = null;
+          });
+        };
+        reader.onerror = () => {
+          const localBlobUrl = URL.createObjectURL(file);
+          window.AppState.selectedImage = localBlobUrl;
+          this.showImagePreview(localBlobUrl);
+
+          // Trigger upload to Cloudinary
+          activeUploadPromise = performUpload(file).finally(() => {
+            activeUploadPromise = null;
+          });
+        };
+        reader.readAsDataURL(file);
+      });
+    }
+
+    if (continueBtn) {
+      continueBtn.addEventListener("click", async () => {
+        if (continueBtn.disabled && continueBtn.dataset.submitting === "true") return;
+        continueBtn.dataset.submitting = "true";
+        continueBtn.disabled = true;
+        clearError();
+
+        // If upload is currently in flight, wait for it
+        if (activeUploadPromise) {
+          continueBtn.textContent = "Uploading...";
+          const res = await activeUploadPromise;
+          if (!res || !window.AppState.imageUrl) {
+            continueBtn.disabled = false;
+            continueBtn.dataset.submitting = "false";
+            return;
+          }
+        } else if (window.AppState.selectedFile && !window.AppState.imageUrl) {
+          // Retry or perform upload if not done yet
+          activeUploadPromise = performUpload(window.AppState.selectedFile).finally(() => {
+            activeUploadPromise = null;
+          });
+          const res = await activeUploadPromise;
+          if (!res || !window.AppState.imageUrl) {
+            continueBtn.disabled = false;
+            continueBtn.dataset.submitting = "false";
+            return;
+          }
+        }
+
+        if (!window.AppState.imageUrl && !window.AppState.selectedImage) {
+          showError("Please select a photo to continue.");
+          continueBtn.disabled = false;
+          continueBtn.dataset.submitting = "false";
+          return;
+        }
+
+        if (descInput) {
+          window.AppState.customDescription = descInput.value.trim();
+          try {
+            sessionStorage.setItem("civicfix_analysis_desc", descInput.value.trim());
+          } catch (e) {}
+          window.saveState();
+        }
+
+        window.location.href = "analysis.html";
+      });
+    }
+  },
+
+  showImagePreview(url) {
+    const preview = document.getElementById("photo-preview-wrap");
+    const emptyZone = document.getElementById("empty-upload-zone");
+    const imgEl = document.getElementById("preview-img");
+    const continueBtn = document.getElementById("continue-btn");
+
+    if (emptyZone) emptyZone.classList.add("hidden");
+    if (preview) preview.classList.remove("hidden");
+    
+    const cleanUrl = (typeof url === "object" && url) ? (url.imageUrl || url.secure_url || "") : url;
+    if (imgEl && cleanUrl) imgEl.src = cleanUrl;
+    if (continueBtn && continueBtn.textContent !== "Uploading...") {
+      continueBtn.removeAttribute("disabled");
+    }
+  },
+
+  removePhoto() {
+    window.AppState.selectedImage = null;
+    window.AppState.imageUrl = null;
+    window.AppState.cloudinaryPublicId = null;
+    window.AppState.selectedFile = null;
+    try {
+      sessionStorage.removeItem("civicfix_analysis_image");
+      sessionStorage.removeItem("civicfix_analysis_desc");
+    } catch (e) {}
+    window.saveState();
+
+    const preview = document.getElementById("photo-preview-wrap");
+    const emptyZone = document.getElementById("empty-upload-zone");
+    const continueBtn = document.getElementById("continue-btn");
+    const input = document.getElementById("photo-input");
+    const errorEl = document.getElementById("upload-error");
+
+    if (errorEl) {
+      errorEl.textContent = "";
+      errorEl.classList.add("hidden");
+    }
+    if (preview) preview.classList.add("hidden");
+    if (emptyZone) emptyZone.classList.remove("hidden");
+    if (input) input.value = "";
+    if (continueBtn) {
+      continueBtn.textContent = "CONTINUE ➔";
+      continueBtn.setAttribute("disabled", "true");
+    }
+  },
+
+  // 3. AI Analysis
+  async initAnalysis() {
+    let image = null;
+    try {
+      image = sessionStorage.getItem("civicfix_analysis_image");
+    } catch (e) {}
+    if (!image) {
+      image = window.AppState.imageUrl || window.AppState.selectedImage || "../assets/report-01.svg";
+    }
+    if (typeof image === "object" && image) {
+      image = image.imageUrl || image.secure_url || "../assets/report-01.svg";
+    }
+
+    let desc = "";
+    try {
+      desc = sessionStorage.getItem("civicfix_analysis_desc");
+    } catch (e) {}
+    if (!desc) {
+      desc = window.AppState.customDescription || "";
+    }
+
+    const loadingEl = document.getElementById("ai-loading-state");
+    const resultEl = document.getElementById("ai-result-state");
+    const errorEl = document.getElementById("ai-error-state");
+    const errorDetailEl = document.getElementById("ai-error-detail");
+    const retryBtn = document.getElementById("retry-analysis-btn");
+    const analysisImg = document.getElementById("analysis-preview-img");
+
+    if (analysisImg && image) {
+      analysisImg.src = image;
+    }
+
+    let isRunningAnalysis = false;
+
+    const runAnalysis = async () => {
+      if (isRunningAnalysis) return;
+      isRunningAnalysis = true;
+
+      // 1. Show loading state, hide result & error
+      if (loadingEl) loadingEl.classList.remove("hidden");
+      if (resultEl) resultEl.classList.add("hidden");
+      if (errorEl) errorEl.classList.add("hidden");
+      if (retryBtn) retryBtn.disabled = true;
+
+      try {
+        let analyzeFn = window.analyzeCivicImage;
+        if (!analyzeFn) {
+          const mod = await import("../js/ai-service.js");
+          analyzeFn = mod.analyzeCivicImage;
+        }
+        if (!analyzeFn) {
+          throw new Error("Firebase AI Logic service is unavailable.");
+        }
+
+        // Real Gemini multimodal analysis (returns multi-issue structured JSON)
+        const result = await analyzeFn(image, desc);
+        window.AppState.currentAIResult = result;
+
+        // Resolve deterministic municipal routing across all issue components
+        const components = Array.isArray(result.issueComponents) && result.issueComponents.length > 0
+          ? result.issueComponents
+          : [{
+            issueType: result.category || "Pothole",
+            role: "primary_issue",
+            severity: result.severity || "High",
+            confidence: result.confidence || 90,
+            summary: result.summary || "Civic issue detected.",
+            evidence: result.observations || [],
+            recommendedAction: result.recommendedAction || "Municipal inspection and repair"
+          }];
+
+        const multiRoute = window.Routing?.resolveMultiIssue
+          ? window.Routing.resolveMultiIssue(components)
+          : null;
+
+        const primaryComp = multiRoute?.primaryIssue || components[0];
+        const primaryDept = multiRoute?.primaryDepartment || (window.Routing?.resolve ? window.Routing.resolve(primaryComp.issueType).department : "City Engineer / PWD");
+        const supportingDepts = multiRoute?.supportingDepartments || [];
+        const deptCount = multiRoute?.departmentCount || 1;
+        const requiresMulti = multiRoute?.requiresMultipleDepartments || (deptCount > 1);
+
+        let responsibleUnit = null;
+        if (window.ReportsService?.getResponsibleUnit) {
+          responsibleUnit = window.ReportsService.getResponsibleUnit(primaryDept);
+        } else {
+          responsibleUnit = primaryComp.assignment || "Road Maintenance Team";
+        }
+
+        const loc = window.AppState?.currentLocation || {};
+        const lat = (typeof loc.latitude === "number") ? loc.latitude : 16.691307;
+        const lon = (typeof loc.longitude === "number") ? loc.longitude : 74.244866;
+        const address = loc.address || "Kolhapur service area";
+        const ward = loc.ward || "20";
+
+        window.AppState.currentReport = {
+          // Backward-compatible core fields
+          problemType: primaryComp.issueType,
+          category: primaryComp.issueType,
+          severity: result.overallSeverity || primaryComp.severity || "High",
+          confidence: primaryComp.confidence || result.confidence || 90,
+          description: result.analysisSummary || result.summary || primaryComp.summary,
+          summary: result.analysisSummary || result.summary || primaryComp.summary,
+          observations: primaryComp.evidence || result.observations || [],
+          recommendedAction: primaryComp.recommendedAction || result.recommendedAction || "Municipal inspection and repair",
+          department: primaryDept,
+          responsibleUnit: responsibleUnit,
+          status: "DRAFT",
+          imageUrl: window.AppState.imageUrl || image,
+          latitude: lat,
+          longitude: lon,
+          location: address,
+          locationText: address,
+          ward: ward,
+          jurisdiction: "YES",
+
+          // Multi-Issue & Multi-Department metadata
+          issueComponents: components,
+          primaryIssue: primaryComp,
+          secondaryIssues: multiRoute?.secondaryIssues || components.slice(1),
+          overallSeverity: result.overallSeverity || primaryComp.severity || "High",
+          requiresMultipleDepartments: requiresMulti,
+          departmentCount: deptCount,
+          primaryDepartment: primaryDept,
+          supportingDepartments: supportingDepts,
+          departmentAssignments: multiRoute?.departmentAssignments || [],
+          workOrders: multiRoute?.workOrders || [],
+          routingStatus: multiRoute?.routingStatus || "CONFIRMED",
+          multiIssueExplanation: multiRoute?.explanation || ""
+        };
+        window.saveState();
+
+        const esc = window.esc || ((str) => {
+          const div = document.createElement("div");
+          div.textContent = str || "";
+          return div.innerHTML;
+        });
+
+        // DOM elements
+        const singleViewEl = document.getElementById("single-issue-view");
+        const multiViewEl = document.getElementById("multi-issue-view");
+        const ambigAlertEl = document.getElementById("ai-ambiguous-alert");
+
+        // Format role helper
+        const formatRole = (role) => {
+          switch (role) {
+            case "possible_root_cause":
+              return "Possible root cause";
+            case "secondary_impact":
+              return "Secondary impact";
+            case "co_occurring_issue":
+              return "Co-occurring issue";
+            case "primary_issue":
+            default:
+              return "Primary issue";
+          }
+        };
+
+        // Ambiguous issue check
+        if (multiRoute?.routingStatus === "MANUAL REVIEW REQUIRED" || primaryComp.issueType === "Other") {
+          if (ambigAlertEl) ambigAlertEl.classList.remove("hidden");
+        } else {
+          if (ambigAlertEl) ambigAlertEl.classList.add("hidden");
+        }
+
+        // Section 14: Single-Issue vs Multi-Issue UI
+        if (components.length <= 1) {
+          // 1 Issue Detected -> Show single-issue presentation
+          if (singleViewEl) singleViewEl.classList.remove("hidden");
+          if (multiViewEl) multiViewEl.classList.add("hidden");
+
+          const typeEl = document.getElementById("analysis-issue-type") || document.querySelector(".result-type");
+          if (typeEl) typeEl.textContent = (primaryComp.issueType || "POTHOLE").toUpperCase();
+
+          const severityValEl = document.getElementById("analysis-severity-val");
+          if (severityValEl) severityValEl.textContent = primaryComp.severity || "High";
+
+          const confidenceValEl = document.getElementById("analysis-confidence-val");
+          if (confidenceValEl) confidenceValEl.textContent = (primaryComp.confidence || 90) + "%";
+
+          const summaryEl = document.getElementById("analysis-summary-text");
+          if (summaryEl) summaryEl.textContent = result.analysisSummary || result.summary || primaryComp.summary || "";
+
+          const obsListEl = document.getElementById("analysis-observations-list");
+          if (obsListEl) {
+            const obsArr = primaryComp.evidence || result.observations || [];
+            if (Array.isArray(obsArr) && obsArr.length > 0) {
+              obsListEl.innerHTML = obsArr.map(obs => `<li>${esc(obs)}</li>`).join("");
+            } else {
+              obsListEl.innerHTML = `<li>Visual evidence detected in photo</li>`;
+            }
+          }
+
+          const actionEl = document.getElementById("analysis-recommended-action") || document.querySelector("#ai-result-state .card h3");
+          if (actionEl) actionEl.textContent = primaryComp.recommendedAction || result.recommendedAction || "Municipal inspection and repair";
+
+        } else {
+          // Multiple Issues Detected -> Section 14 Presentation
+          if (singleViewEl) singleViewEl.classList.add("hidden");
+          if (multiViewEl) multiViewEl.classList.remove("hidden");
+
+          const multiSummEl = document.getElementById("multi-analysis-summary");
+          if (multiSummEl) multiSummEl.textContent = result.analysisSummary || "AI identified multiple infrastructure issues in the photo evidence.";
+
+          const multiSevEl = document.getElementById("multi-overall-severity");
+          if (multiSevEl) multiSevEl.textContent = result.overallSeverity || "High";
+
+          const multiCountEl = document.getElementById("multi-issue-count");
+          if (multiCountEl) multiCountEl.textContent = components.length;
+
+          // Render issue components list
+          const compContainer = document.getElementById("multi-components-container");
+          if (compContainer) {
+            compContainer.innerHTML = components.map((c, idx) => {
+              const isRootCause = c.role === "possible_root_cause";
+              const isSecondary = c.role === "secondary_impact";
+              const roleBg = isRootCause ? "#eff6ff" : (isSecondary ? "#f0fdfa" : "#f8fafc");
+              const roleBorder = isRootCause ? "var(--blue)" : (isSecondary ? "#0f766e" : "#cbd5e1");
+              const roleColor = isRootCause ? "var(--blue)" : (isSecondary ? "#0f766e" : "#475569");
+              const sevClass = (c.severity === "High") ? "active" : "done";
+
+              const evidenceList = Array.isArray(c.evidence) && c.evidence.length > 0
+                ? c.evidence.map(e => `<li>${esc(e)}</li>`).join("")
+                : `<li>Visible ${esc(c.issueType.toLowerCase())} detected in image</li>`;
+
+              return `
+                <div class="card" style="border-left:4px solid ${roleBorder};padding:18px 20px;">
+                  <div class="row between" style="flex-wrap:wrap;gap:8px;">
+                    <div>
+                      <div class="kicker" style="font-size:11px;color:${roleColor};font-weight:700;">Issue ${idx + 1}</div>
+                      <h3 style="margin:2px 0 0;font-size:20px;color:#0f172a;">${esc(c.issueType)}</h3>
+                    </div>
+                    <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;">
+                      <span class="status" style="font-size:12px;padding:3px 10px;background:${roleBg};color:${roleColor};border:1px solid ${roleBorder};">
+                        ${esc(formatRole(c.role))}
+                      </span>
+                      <span class="status ${sevClass}" style="font-size:12px;padding:3px 10px;">
+                        Severity: ${esc(c.severity || "Medium")}
+                      </span>
+                      <span class="status" style="font-size:12px;padding:3px 10px;background:#f1f5f9;color:#334155;border:1px solid #cbd5e1;">
+                        ${c.confidence}%
+                      </span>
+                    </div>
+                  </div>
+
+                  <p style="margin:10px 0 8px;font-size:14px;color:#334155;line-height:1.4;">${esc(c.summary)}</p>
+
+                  <div style="margin-top:8px;">
+                    <div class="kicker" style="font-size:10px;">Visual Evidence</div>
+                    <ul style="margin:4px 0 0 18px;font-size:13px;color:#475569;line-height:1.45;">
+                      ${evidenceList}
+                    </ul>
+                  </div>
+
+                  <div style="margin-top:10px;padding-top:8px;border-top:1px solid #f1f5f9;font-size:13px;color:#0b3d91;">
+                    <strong>Action:</strong> ${esc(c.recommendedAction || "Inspection and field repair")}
+                  </div>
+                </div>
+              `;
+            }).join("");
+          }
+
+          // Populate Municipal Routing Section
+          const headerEl = document.getElementById("multi-routing-header");
+          if (headerEl) headerEl.textContent = `${deptCount} department${deptCount > 1 ? "s" : ""} may be involved`;
+
+          const deptBadgeEl = document.getElementById("multi-dept-badge");
+          if (deptBadgeEl) deptBadgeEl.textContent = `${deptCount} Departments`;
+
+          const primaryDeptEl = document.getElementById("multi-primary-dept");
+          if (primaryDeptEl) primaryDeptEl.textContent = primaryDept;
+
+          const primaryRoleEl = document.getElementById("multi-primary-role");
+          if (primaryRoleEl) primaryRoleEl.textContent = `Lead agency · Responsible for ${formatRole(primaryComp.role).toLowerCase()} (${primaryComp.issueType})`;
+
+          const suppDeptsEl = document.getElementById("multi-supporting-depts");
+          if (suppDeptsEl) suppDeptsEl.textContent = supportingDepts.length > 0 ? supportingDepts.join(", ") : "None required";
+
+          const suppRoleEl = document.getElementById("multi-supporting-role");
+          if (suppRoleEl) {
+            suppRoleEl.textContent = supportingDepts.length > 0
+              ? "Secondary impact & coordinated infrastructure restoration"
+              : "All issues handled directly by lead agency";
+          }
+
+          const workflowNoteEl = document.getElementById("multi-workflow-note");
+          if (workflowNoteEl) {
+            if (supportingDepts.length > 0) {
+              workflowNoteEl.innerHTML = `<strong>Coordinated Workflow:</strong> CivicFix links these departments under one Master Incident. Road restoration is automatically sequenced with pipeline inspection.`;
+              workflowNoteEl.classList.remove("hidden");
+            } else {
+              workflowNoteEl.classList.add("hidden");
+            }
+          }
+
+          const explEl = document.getElementById("multi-explanation-text");
+          if (explEl) {
+            explEl.textContent = multiRoute?.explanation || "The image appears to show multiple related civic issues. CivicFix can route the suspected underlying infrastructure issue and the resulting road damage to the relevant municipal teams.";
+          }
+        }
+
+        // Show result state, hide loading
+        if (loadingEl) loadingEl.classList.add("hidden");
+        if (resultEl) resultEl.classList.remove("hidden");
+
+      } catch (err) {
+        console.error("AI Analysis Execution Error:", err);
+        if (loadingEl) loadingEl.classList.add("hidden");
+        if (resultEl) resultEl.classList.add("hidden");
+        if (errorEl) {
+          const errMsg = err.message || String(err);
+          if (errorDetailEl) {
+            if (errMsg.includes("rate limit") || errMsg.includes("429") || errMsg.includes("RESOURCE_EXHAUSTED") || errMsg.includes("quota")) {
+              errorDetailEl.textContent = "AI analysis rate limit reached. Please wait a moment and try again.";
+            } else {
+              errorDetailEl.textContent = errMsg;
+            }
+          }
+          errorEl.classList.remove("hidden");
+        }
+      } finally {
+        isRunningAnalysis = false;
+        if (retryBtn) retryBtn.disabled = false;
+      }
+    };
+
+    if (retryBtn) {
+      retryBtn.onclick = () => runAnalysis();
+    }
+
+    await runAnalysis();
+  },
+
+  // 4. KMC Location Engine & Interactive Map
+  async initLocation() {
+    window.ensureCitizenDemoState();
+    let jurisdictionService = window.KolhapurJurisdiction;
+    if (!jurisdictionService) {
+      try {
+        jurisdictionService = await import("../js/kolhapur-jurisdiction.js");
+      } catch (e) {
+        try {
+          jurisdictionService = await import("/js/kolhapur-jurisdiction.js");
+        } catch (e2) {}
+      }
+    }
+
+    if (jurisdictionService?.loadKmcSpatialData) {
+      await jurisdictionService.loadKmcSpatialData();
+    }
+
+    // Initial coordinates: Test area Ward 20 (Prathamesh Nagar, Salokhe Nagar, Kalamba)
+    const stored = window.AppState?.currentLocation || {};
+    let currentLat = (typeof stored.latitude === "number" && !isNaN(stored.latitude)) ? stored.latitude : 16.691307;
+    let currentLon = (typeof stored.longitude === "number" && !isNaN(stored.longitude)) ? stored.longitude : 74.244866;
+    let currentAccuracy = stored.accuracy || 12;
+
+    const mapEl = document.getElementById("location-picker-map");
+    const addrEl = document.getElementById("loc-address");
+    const latEl = document.getElementById("loc-lat");
+    const lngEl = document.getElementById("loc-lng");
+    const accEl = document.getElementById("loc-accuracy");
+    const accWarnEl = document.getElementById("loc-accuracy-warning");
+    const outWarnEl = document.getElementById("loc-outside-warning");
+    const muniEl = document.getElementById("loc-municipality");
+    const wardEl = document.getElementById("loc-ward");
+    const wardNameEl = document.getElementById("loc-ward-name");
+    const divEl = document.getElementById("loc-division");
+    const badgeEl = document.getElementById("loc-jurisdiction-badge");
+    const nearbyListEl = document.getElementById("nearby-reports-list");
+    const nearbyBadgeEl = document.getElementById("nearby-count-badge");
+    const nearbyHeadingEl = document.getElementById("nearby-heading");
+    const useMyLocBtn = document.getElementById("use-my-loc-btn");
+    const useDemoBtn = document.getElementById("use-demo-loc-btn");
+    const continueBtn = document.getElementById("location-continue-btn");
+
+    let map = null;
+    let marker = null;
+    let circle = null;
+    let reverseGeocodeTimer = null;
+    let currentNearbyReports = [];
+
+    // Helper: update all UI fields and perform checks
+    const updateLocationState = async (lat, lon, accuracy = null, skipGeocode = false) => {
+      currentLat = Number(Number(lat).toFixed(6));
+      currentLon = Number(Number(lon).toFixed(6));
+      if (accuracy != null) currentAccuracy = Math.round(Number(accuracy));
+
+      if (latEl) latEl.textContent = currentLat.toFixed(6);
+      if (lngEl) lngEl.textContent = currentLon.toFixed(6);
+      if (accEl) accEl.textContent = `±${currentAccuracy} m`;
+
+      // Section 9: Low accuracy warning
+      if (accWarnEl) {
+        if (currentAccuracy > 100) {
+          accWarnEl.classList.remove("hidden");
+        } else {
+          accWarnEl.classList.add("hidden");
+        }
+      }
+
+      // Section 2 & 3: KMC Boundary & Point-In-Polygon Ward Detection
+      const jService = window.KolhapurJurisdiction || jurisdictionService;
+      let jurisdiction = {
+        municipality: "Kolhapur Municipal Corporation",
+        city: "Kolhapur",
+        ward: "20",
+        wardName: "Ward 20 — Salokhe Nagar / Kalamba / Prathamesh Nagar",
+        division: null,
+        displayDivision: "Pending official KMC division mapping",
+        jurisdictionStatus: "INSIDE KMC"
+      };
+
+      if (jService?.getKolhapurJurisdiction) {
+        jurisdiction = jService.getKolhapurJurisdiction(currentLat, currentLon);
+      }
+
+      const isInside = jurisdiction.jurisdictionStatus === "INSIDE KMC";
+
+      if (isInside) {
+        if (badgeEl) {
+          badgeEl.textContent = "KMC Jurisdiction";
+          badgeEl.style.borderColor = "var(--blue)";
+          badgeEl.style.color = "var(--blue)";
+        }
+        if (muniEl) muniEl.textContent = jurisdiction.municipality || "Kolhapur Municipal Corporation";
+        if (wardEl) wardEl.textContent = jurisdiction.ward || "Pending boundary mapping";
+        if (wardNameEl) wardNameEl.textContent = jurisdiction.wardName || "Authoritative KMC Ward Formation 2025";
+        if (divEl) divEl.textContent = jurisdiction.displayDivision || "Pending official KMC division mapping";
+        if (outWarnEl) outWarnEl.classList.add("hidden");
+        if (continueBtn) continueBtn.removeAttribute("disabled");
+      } else {
+        if (badgeEl) {
+          badgeEl.textContent = "Outside KMC";
+          badgeEl.style.borderColor = "#b91c1c";
+          badgeEl.style.color = "#b91c1c";
+        }
+        if (muniEl) muniEl.textContent = "Outside Kolhapur Municipal Corporation";
+        if (wardEl) wardEl.textContent = "None";
+        if (wardNameEl) wardNameEl.textContent = "Outside KMC service boundary";
+        if (divEl) divEl.textContent = "Not applicable";
+        if (outWarnEl) outWarnEl.classList.remove("hidden");
+      }
+
+      // Update map marker and 100m circle position
+      if (marker) marker.setLatLng([currentLat, currentLon]);
+      if (circle) circle.setLatLng([currentLat, currentLon]);
+      if (map) map.panTo([currentLat, currentLon]);
+
+      // Debounced reverse geocode (Section 5)
+      clearTimeout(reverseGeocodeTimer);
+      if (!skipGeocode) {
+        reverseGeocodeTimer = setTimeout(async () => {
+          let geo = null;
+          if (jService?.reverseGeocodeNominatim) {
+            geo = await jService.reverseGeocodeNominatim(currentLat, currentLon);
+          }
+          const displayAddr = geo?.displayAddress || (isInside ? "Prathamesh Nagar, Salokhe Nagar, Kalamba, Kolhapur" : "Outside Kolhapur Boundary");
+          if (addrEl) addrEl.textContent = displayAddr;
+
+          saveCurrentNormalizedLocation(displayAddr, geo, jurisdiction, currentAccuracy);
+        }, 350);
+      }
+
+      // Section 12, 13, 14, 15: 100-metre Similar Report Detection
+      const category = window.AppState?.currentAIResult?.problemType || window.AppState?.currentReport?.category || "Pothole";
+      if (jService?.findNearbyReports100m) {
+        if (nearbyListEl) {
+          nearbyListEl.innerHTML = `<div class="muted" style="padding:10px 0;text-align:center;font-size:13px;">Scanning 100m radius for civic incidents...</div>`;
+        }
+        currentNearbyReports = await jService.findNearbyReports100m(currentLat, currentLon, category);
+        renderNearbyReportsUI(currentNearbyReports);
+      }
+    };
+
+    // Render 100m similar reports list
+    const renderNearbyReportsUI = (reports) => {
+      if (!nearbyListEl) return;
+
+      if (!reports || reports.length === 0) {
+        if (nearbyBadgeEl) nearbyBadgeEl.textContent = "0 found";
+        if (nearbyHeadingEl) nearbyHeadingEl.textContent = "SIMILAR REPORTS WITHIN 100 M";
+        nearbyListEl.innerHTML = `
+          <div class="muted" style="padding:14px;text-align:center;font-size:14px;background:#f9fafb;border-radius:8px;">
+            No similar reports found within 100 m.
+          </div>
+        `;
+        return;
+      }
+
+      if (nearbyBadgeEl) nearbyBadgeEl.textContent = `${reports.length} found`;
+      if (nearbyHeadingEl) nearbyHeadingEl.textContent = `${reports.length} SIMILAR REPORT${reports.length > 1 ? "S" : ""} FOUND WITHIN 100 M`;
+
+      nearbyListEl.innerHTML = reports.map(r => `
+        <div class="card compact" style="margin-bottom:8px;border:1px solid var(--blue-mid);background:#fbfcfe;padding:12px 14px;">
+          <div class="row between">
+            <span class="kicker" style="color:var(--blue);font-size:11px;">POSSIBLE RELATED REPORT</span>
+            <span style="font-size:12px;font-weight:800;color:var(--blue);background:#edf3fb;padding:2px 8px;border-radius:4px;">${r.displayDistance}</span>
+          </div>
+          <div class="row between" style="margin:4px 0 2px;">
+            <strong style="font-size:16px;color:var(--blue);">${window.esc ? window.esc(r.category) : r.category}</strong>
+            <span class="muted" style="font-size:12px;">Reported: ${r.reportedTimeStr}</span>
+          </div>
+          <div class="row between" style="font-size:12px;margin-top:6px;">
+            <span class="muted">Master Incident: <strong style="color:var(--blue);">${r.masterIncidentId}</strong></span>
+            <span style="font-weight:700;color:var(--blue);cursor:pointer;" onclick="alert('Report ID: ${r.displayId}\\nCategory: ${r.category}\\nDistance: ${r.displayDistance}\\nMaster Incident: ${r.masterIncidentId}\\nLocation: ${r.locationText}')">View location ➔</span>
+          </div>
+        </div>
+      `).join("");
+    };
+
+    // Save normalized location into AppState (Section 7 & 18)
+    const saveCurrentNormalizedLocation = (displayAddr, geo, jurisdiction, accuracy) => {
+      const normalized = {
+        latitude: currentLat,
+        longitude: currentLon,
+        accuracy: accuracy || 12,
+        displayAddress: displayAddr,
+        address: displayAddr,
+        locationText: displayAddr,
+        road: geo?.road || null,
+        neighbourhood: geo?.neighbourhood || null,
+        suburb: geo?.suburb || null,
+        city: jurisdiction.city || geo?.city || "Kolhapur",
+        district: geo?.district || "Kolhapur",
+        state: geo?.state || "Maharashtra",
+        postcode: geo?.postcode || null,
+        municipality: jurisdiction.municipality,
+        ward: jurisdiction.ward,
+        wardName: jurisdiction.wardName,
+        division: jurisdiction.division,
+        divisionOffice: jurisdiction.divisionOffice,
+        divisionStatus: jurisdiction.divisionStatus,
+        displayDivision: jurisdiction.displayDivision,
+        jurisdictionStatus: jurisdiction.jurisdictionStatus,
+        jurisdiction: jurisdiction.jurisdictionStatus === "INSIDE KMC" ? "YES" : "NO",
+        nearbySimilarCount: currentNearbyReports.length
+      };
+
+      window.AppState.currentLocation = normalized;
+      if (!window.AppState.currentReport) {
+        window.AppState.currentReport = {};
+      }
+      Object.assign(window.AppState.currentReport, {
+        latitude: currentLat,
+        longitude: currentLon,
+        accuracy: accuracy || 12,
+        locationText: displayAddr,
+        ward: jurisdiction.ward,
+        wardName: jurisdiction.wardName,
+        municipality: jurisdiction.municipality,
+        jurisdictionStatus: jurisdiction.jurisdictionStatus,
+        nearbySimilarCount: currentNearbyReports.length
+      });
+      window.saveState();
+    };
+
+    // Initialize Leaflet Map (Section 8)
+    if (mapEl && typeof L !== "undefined") {
+      try {
+        map = L.map("location-picker-map", { scrollWheelZoom: false }).setView([currentLat, currentLon], 15);
+        L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+          attribution: "&copy; OpenStreetMap contributors"
+        }).addTo(map);
+
+        // Movable marker (Section 8)
+        marker = L.marker([currentLat, currentLon], { draggable: true }).addTo(map);
+        marker.bindPopup("<strong>Problem Location</strong><br>Drag pin to adjust location").openPopup();
+
+        // 100m visual search radius (Section 12)
+        circle = L.circle([currentLat, currentLon], {
+          radius: 100,
+          color: "#0B3D91",
+          fillColor: "#0B3D91",
+          fillOpacity: 0.10,
+          weight: 2
+        }).addTo(map);
+
+        // Marker drag listener
+        marker.on("dragend", (e) => {
+          const pt = e.target.getLatLng();
+          updateLocationState(pt.lat, pt.lng);
+        });
+
+        // Map click listener to relocate pin
+        map.on("click", (e) => {
+          updateLocationState(e.latlng.lat, e.latlng.lng);
+        });
+
+        setTimeout(() => map.invalidateSize(), 200);
+      } catch (mErr) {
+        console.warn("Leaflet map initialization notice:", mErr);
+      }
+    }
+
+    // Trigger initial state
+    await updateLocationState(currentLat, currentLon, currentAccuracy);
+
+    // Event listeners
+    if (useMyLocBtn) {
+      useMyLocBtn.onclick = () => {
+        if ("geolocation" in navigator) {
+          useMyLocBtn.textContent = "Acquiring GPS...";
+          navigator.geolocation.getCurrentPosition(
+            (pos) => {
+              useMyLocBtn.textContent = "◎ USE MY LOCATION";
+              updateLocationState(pos.coords.latitude, pos.coords.longitude, pos.coords.accuracy);
+            },
+            (err) => {
+              useMyLocBtn.textContent = "◎ USE MY LOCATION";
+              alert("Could not acquire GPS position. Falling back to test area.");
+              updateLocationState(16.691307, 74.244866, 12);
+            },
+            { enableHighAccuracy: true, timeout: 8000 }
+          );
+        } else {
+          alert("Geolocation is not supported by your browser.");
+        }
+      };
+    }
+
+    if (useDemoBtn) {
+      useDemoBtn.onclick = () => {
+        // Authoritative validation test area (Ward 20 - Prathamesh Nagar, Salokhe Nagar, Kalamba)
+        updateLocationState(16.691307, 74.244866, 10);
+      };
+    }
+
+    if (continueBtn) {
+      continueBtn.onclick = () => {
+        const jService = window.KolhapurJurisdiction || jurisdictionService;
+        const status = jService?.isInsideKMC ? jService.isInsideKMC(currentLat, currentLon) : "INSIDE KMC";
+        if (status === "OUTSIDE KMC") {
+          alert("Selected location is outside Kolhapur Municipal Corporation service boundary. Please place the pin inside KMC limits to proceed.");
+          return;
+        }
+
+        // Proceed to next step in workflow
+        window.location.href = "duplicate.html";
+      };
+    }
+  },
+
+  // 5. Similar Incident & Real Duplicate Detection
+  async initDuplicate() {
+    setTimeout(() => {
+      if (window.CivicMap) {
+        window.CivicMap.init("citizen-mini-map");
+      }
+    }, 100);
+
+    const r = window.AppState?.currentReport || {};
+    const problemCategory = window.AppState?.currentAIResult?.problemType || r.category || r.problemType || "Pothole";
+    const loc = window.AppState?.currentLocation || {};
+    const lat = (typeof loc.latitude === "number") ? loc.latitude : (typeof r.latitude === "number" ? r.latitude : 16.691307);
+    const lon = (typeof loc.longitude === "number") ? loc.longitude : (typeof r.longitude === "number" ? r.longitude : 74.244866);
+    const ward = loc.ward || r.ward || "20";
+    const address = loc.address || r.locationText || r.location || "Kolhapur service area";
+    const imgUrl = window.AppState?.imageUrl || window.AppState?.selectedImage || r.imageUrl;
+
+    const reportInput = {
+      category: problemCategory,
+      latitude: lat,
+      longitude: lon,
+      ward: ward,
+      locationText: address,
+      imageUrl: imgUrl
+    };
+
+    // Real duplicate detection via DuplicateService
+    let dupService = window.DuplicateService;
+    if (!dupService) {
+      try {
+        dupService = await import("../js/duplicate-service.js");
+      } catch (e) {
+        try {
+          dupService = await import("/js/duplicate-service.js");
+        } catch (e2) {}
+      }
+    }
+
+    let dupResult;
+    if (dupService && typeof dupService.detectDuplicateReport === "function") {
+      dupResult = await dupService.detectDuplicateReport(reportInput);
+    } else {
+      dupResult = {
+        duplicateStatus: "NO_DUPLICATE",
+        duplicateScore: 0,
+        isDuplicate: false,
+        possibleDuplicateReportId: null,
+        masterIncidentId: `KMC-${Math.floor(1000 + Math.random() * 9000)}`,
+        matchedReport: null,
+        distanceMeters: null,
+        displayDistance: null,
+        title: "No likely duplicate found",
+        message: "No existing civic issue matches this location and category. A new Master Incident will be created."
+      };
+    }
+
+    // Update AppState report with duplicate result fields (Part E)
+    if (!window.AppState.currentReport) {
+      window.AppState.currentReport = {};
+    }
+    window.AppState.currentReport.category = problemCategory;
+    window.AppState.currentReport.problemType = problemCategory;
+    window.AppState.currentReport.latitude = lat;
+    window.AppState.currentReport.longitude = lon;
+    window.AppState.currentReport.ward = ward;
+    window.AppState.currentReport.locationText = address;
+    window.AppState.currentReport.duplicateStatus = dupResult.duplicateStatus;
+    window.AppState.currentReport.duplicateScore = dupResult.duplicateScore;
+    window.AppState.currentReport.possibleDuplicateReportId = dupResult.possibleDuplicateReportId;
+    window.AppState.currentReport.masterIncidentId = dupResult.masterIncidentId;
+    if (dupResult.imageHash) {
+      window.AppState.currentReport.imageHash = dupResult.imageHash;
+    }
+
+    window.AppState.currentMasterIncident = {
+      id: dupResult.masterIncidentId,
+      problemType: problemCategory,
+      reports: dupResult.matchedReport ? ((dupResult.matchedReport.reportsCount || 1) + 1) : 1,
+      status: "Assigned"
+    };
+    window.saveState();
+
+    // DOM references
+    const kickerEl = document.getElementById("dup-kicker") || document.querySelector(".incident-highlight .kicker");
+    const headingEl = document.getElementById("dup-heading") || document.querySelector(".incident-highlight h1");
+    const subheadingEl = document.getElementById("dup-subheading") || document.querySelector(".incident-highlight p.muted");
+    const distEl = document.getElementById("dup-distance-val") || document.querySelector(".grid-2 .metric:nth-child(1) .metric-value");
+    const countEl = document.getElementById("dup-reports-val") || document.querySelector(".grid-2 .metric:nth-child(2) .metric-value");
+    const countLabelEl = document.getElementById("dup-reports-label");
+    const masterIdEl = document.getElementById("dup-master-id") || document.querySelector(".address-card h2");
+    const masterInfoEl = document.getElementById("dup-master-info") || document.querySelector(".address-card p");
+    const calloutEl = document.getElementById("dup-callout");
+    const addReportBtn = document.getElementById("add-report-btn");
+
+    if (masterIdEl) masterIdEl.textContent = dupResult.masterIncidentId;
+
+    if (dupResult.isDuplicate) {
+      if (kickerEl) kickerEl.textContent = dupResult.duplicateStatus === "POSSIBLE_DUPLICATE" ? "Possible duplicate detected" : "Possibly related civic problem";
+      if (headingEl) headingEl.textContent = dupResult.title || "A similar civic problem has already been reported nearby.";
+      if (subheadingEl) subheadingEl.textContent = dupResult.message || "Your report will be linked to this physical issue so municipal crews address it as one collective problem.";
+      if (distEl) distEl.textContent = dupResult.displayDistance || "Nearby";
+      const existingReportsCount = dupResult.matchedReport?.reportsCount || 1;
+      if (countEl) countEl.textContent = String(existingReportsCount);
+      if (countLabelEl) countLabelEl.textContent = "Reports";
+      if (masterInfoEl) masterInfoEl.textContent = `${problemCategory} · Ward ${ward} · ${address}`;
+      if (calloutEl) {
+        calloutEl.innerHTML = `<strong>Important:</strong> Your report is not duplicate noise. It provides additional verified evidence for <strong>${dupResult.masterIncidentId}</strong>.`;
+      }
+      if (addReportBtn) {
+        addReportBtn.textContent = "ADD MY REPORT ➔";
+      }
+    } else {
+      if (kickerEl) kickerEl.textContent = "Duplicate Check Complete";
+      if (headingEl) headingEl.textContent = "No likely duplicate found";
+      if (subheadingEl) subheadingEl.textContent = "No existing civic issue matches this location and category. A new Master Incident will be created.";
+      if (distEl) distEl.textContent = "None";
+      if (countEl) countEl.textContent = "0";
+      if (countLabelEl) countLabelEl.textContent = "Existing";
+      if (masterInfoEl) masterInfoEl.textContent = `New Physical Issue · Ward ${ward} · ${address}`;
+      if (calloutEl) {
+        calloutEl.innerHTML = `<strong>New Incident:</strong> A new Master Incident <strong>${dupResult.masterIncidentId}</strong> will be registered for municipal field teams.`;
+      }
+      if (addReportBtn) {
+        addReportBtn.textContent = "PROCEED WITH REPORT ➔";
+      }
+    }
+
+    if (addReportBtn) {
+      addReportBtn.onclick = () => {
+        window.location.href = "confirm.html";
+      };
+    }
+  },
+
+  // 6. Confirm & Real Firestore Submission
+  initConfirm() {
+    const r = window.AppState.currentReport || {};
+    const m = window.AppState.currentMasterIncident;
+
+    const imgEl = document.getElementById("confirm-img");
+    const probEl = document.getElementById("confirm-problem");
+    const sevEl = document.getElementById("confirm-severity");
+    const addrEl = document.getElementById("confirm-address");
+    const wardEl = document.getElementById("confirm-ward");
+    const deptEl = document.getElementById("confirm-dept");
+    const unitEl = document.getElementById("confirm-unit");
+    const masterEl = document.getElementById("confirm-master-id");
+    const masterDescEl = document.getElementById("confirm-master-desc");
+    const countEl = document.getElementById("confirm-count");
+    const countLabelEl = document.getElementById("confirm-count-label");
+    const dupBoxEl = document.getElementById("confirm-duplicate-box");
+    const dupMasterLabelEl = document.getElementById("confirm-dup-master-label");
+
+    let imageSrc = window.AppState.imageUrl || window.AppState.selectedImage || (r && r.imageUrl) || "../assets/report-01.svg";
+    if (typeof imageSrc === "object" && imageSrc) {
+      imageSrc = imageSrc.imageUrl || imageSrc.secure_url || "../assets/report-01.svg";
+    }
+    if (imgEl) imgEl.src = imageSrc;
+
+    const problemCategory = window.AppState?.currentAIResult?.problemType || r.category || r.problemType || "Pothole";
+    const problemSeverity = window.AppState?.currentAIResult?.severity || r.severity || "High";
+    const locationText = window.AppState?.currentLocation?.address || r.locationText || r.location || "Prathamesh Nagar, Salokhe Nagar, Kalamba, Kolhapur";
+    const ward = window.AppState?.currentLocation?.ward || r.ward || "20";
+
+    // Deterministic department resolution via routing rules
+    let reportDept = r.department;
+    if (!reportDept) {
+      const routing = window.Routing?.resolve ? window.Routing.resolve(problemCategory) : null;
+      reportDept = routing?.department || "City Engineer / PWD";
+    }
+    let responsibleUnit = r.responsibleUnit;
+    if (!responsibleUnit) {
+      if (window.ReportsService?.getResponsibleUnit) {
+        responsibleUnit = window.ReportsService.getResponsibleUnit(reportDept);
+      } else {
+        responsibleUnit = "Concerned Sub-City Engineer";
+      }
+    }
+
+    const muniEl = document.getElementById("confirm-muni");
+    const divEl = document.getElementById("confirm-division");
+    const coordsEl = document.getElementById("confirm-coords");
+    const accEl = document.getElementById("confirm-accuracy");
+
+    if (probEl) probEl.textContent = problemCategory;
+    if (sevEl) sevEl.textContent = problemSeverity;
+    if (addrEl) addrEl.textContent = locationText;
+    if (wardEl) wardEl.textContent = ward;
+    if (muniEl) muniEl.textContent = r.municipality || window.AppState?.currentLocation?.municipality || "Kolhapur Municipal Corporation";
+    if (divEl) divEl.textContent = r.division || window.AppState?.currentLocation?.displayDivision || "Pending official mapping";
+
+    const latVal = (typeof r.latitude === "number" && !isNaN(r.latitude)) ? r.latitude : (window.AppState?.currentLocation?.latitude ?? 16.691307);
+    const lonVal = (typeof r.longitude === "number" && !isNaN(r.longitude)) ? r.longitude : (window.AppState?.currentLocation?.longitude ?? 74.244866);
+    const accVal = r.accuracy || window.AppState?.currentLocation?.accuracy || 12;
+
+    if (coordsEl) coordsEl.textContent = `${Number(latVal).toFixed(6)}, ${Number(lonVal).toFixed(6)}`;
+    if (accEl) accEl.textContent = `±${accVal} m`;
+
+    if (deptEl) deptEl.textContent = reportDept;
+    if (unitEl) unitEl.textContent = `Responsible Unit: ${responsibleUnit} · Automatically assigned via municipal routing`;
+
+    // Multi-issue & Multi-department metadata
+    const issueComponents = r.issueComponents || window.AppState?.currentAIResult?.issueComponents || [];
+    const hasMultipleIssues = Array.isArray(issueComponents) && issueComponents.length > 1;
+    const supportingDepts = r.supportingDepartments || [];
+    const deptCount = r.departmentCount || (supportingDepts.length > 0 ? supportingDepts.length + 1 : 1);
+    const primaryDept = r.primaryDepartment || reportDept;
+
+    const compSummaryEl = document.getElementById("confirm-components-summary");
+    const multiCompBox = document.getElementById("confirm-multi-components-box");
+    const compListEl = document.getElementById("confirm-components-list");
+    const singleDeptBox = document.getElementById("confirm-single-dept-box");
+    const multiDeptBox = document.getElementById("confirm-multi-dept-box");
+
+    const formatRole = (role) => {
+      switch (role) {
+        case "possible_root_cause": return "Possible root cause";
+        case "secondary_impact": return "Secondary impact";
+        case "co_occurring_issue": return "Co-occurring issue";
+        default: return "Primary issue";
+      }
+    };
+
+    if (hasMultipleIssues) {
+      if (compSummaryEl) {
+        compSummaryEl.textContent = `+ ${issueComponents.length - 1} related civic problem${issueComponents.length > 2 ? 's' : ''} detected`;
+      }
+      if (multiCompBox) multiCompBox.classList.remove("hidden");
+      if (compListEl) {
+        compListEl.innerHTML = issueComponents.map((c, i) => `
+          <div style="display:flex;justify-content:space-between;align-items:center;padding:4px 0;${i > 0 ? 'border-top:1px solid #f1f5f9;' : ''}">
+            <div>
+              <strong style="color:#0f172a;font-size:14px;">${window.esc ? window.esc(c.issueType) : c.issueType}</strong>
+              <span class="muted" style="font-size:12px;margin-left:6px;">(${formatRole(c.role)})</span>
+            </div>
+            <span class="status ${(c.severity === 'High') ? 'active' : 'done'}" style="font-size:11px;padding:2px 8px;">${c.severity || 'Medium'}</span>
+          </div>
+        `).join("");
+      }
+    } else {
+      if (compSummaryEl) compSummaryEl.textContent = "";
+      if (multiCompBox) multiCompBox.classList.add("hidden");
+    }
+
+    if (deptCount > 1) {
+      if (singleDeptBox) singleDeptBox.classList.add("hidden");
+      if (multiDeptBox) multiDeptBox.classList.remove("hidden");
+
+      const countBadge = document.getElementById("confirm-dept-count-badge");
+      if (countBadge) countBadge.textContent = `${deptCount} Departments Involved`;
+
+      const pDeptEl = document.getElementById("confirm-multi-primary-dept");
+      if (pDeptEl) pDeptEl.textContent = primaryDept;
+
+      const pUnitEl = document.getElementById("confirm-multi-primary-unit");
+      if (pUnitEl) pUnitEl.textContent = `${responsibleUnit} (Lead Agency)`;
+
+      const sDeptEl = document.getElementById("confirm-multi-supporting-depts");
+      if (sDeptEl) sDeptEl.textContent = supportingDepts.join(", ");
+
+      const sUnitEl = document.getElementById("confirm-multi-supporting-unit");
+      if (sUnitEl) sUnitEl.textContent = "Coordinated Municipal Crews";
+
+      const explEl = document.getElementById("confirm-multi-explanation");
+      if (explEl) {
+        explEl.textContent = r.multiIssueExplanation || "CivicFix coordinates multiple municipal departments under one Master Incident.";
+      }
+    } else {
+      if (singleDeptBox) singleDeptBox.classList.remove("hidden");
+      if (multiDeptBox) multiDeptBox.classList.add("hidden");
+    }
+
+    const masterId = m?.id || r.masterIncidentId || ("KMC-" + Math.floor(1000 + Math.random() * 9000));
+    if (masterEl) masterEl.textContent = masterId;
+
+    const isDuplicate = r.duplicateStatus === "POSSIBLE_DUPLICATE" || r.duplicateStatus === "POSSIBLY_RELATED";
+    if (dupBoxEl) {
+      if (isDuplicate) {
+        dupBoxEl.classList.remove("hidden");
+        if (dupMasterLabelEl) dupMasterLabelEl.textContent = masterId;
+      } else {
+        dupBoxEl.classList.add("hidden");
+      }
+    }
+
+    if (isDuplicate) {
+      if (masterDescEl) masterDescEl.textContent = "Your report will be linked to this existing physical civic problem.";
+      if (countEl) countEl.textContent = m?.reports ? String(m.reports) : "2";
+      if (countLabelEl) countLabelEl.textContent = "Citizen reports after submission";
+    } else {
+      if (masterDescEl) masterDescEl.textContent = "A new Master Incident will be created for this physical civic problem.";
+      if (countEl) countEl.textContent = "1";
+      if (countLabelEl) countLabelEl.textContent = "New physical civic incident";
+    }
+
+    const submitBtn = document.getElementById("submit-report-btn");
+    const errorEl = document.getElementById("submit-error");
+
+    const clearError = () => {
+      if (errorEl) {
+        errorEl.textContent = "";
+        errorEl.classList.add("hidden");
+      }
+    };
+
+    const showError = (msg) => {
+      if (errorEl) {
+        errorEl.textContent = msg;
+        errorEl.classList.remove("hidden");
+      } else {
+        alert(msg);
+      }
+    };
+
+    let isSubmitting = false;
+
+    if (submitBtn) {
+      submitBtn.onclick = async () => {
+        if (isSubmitting) return;
+
+        clearError();
+
+        // 1. Image check
+        const imageUrl = window.AppState?.imageUrl || window.AppState?.selectedImage;
+        const cloudinaryPublicId = window.AppState?.cloudinaryPublicId;
+        if (!imageUrl) {
+          showError("Please upload an image before submitting.");
+          return;
+        }
+
+        isSubmitting = true;
+        submitBtn.disabled = true;
+        submitBtn.textContent = "Submitting...";
+
+        try {
+          let service = window.ReportsService;
+          if (!service) {
+            try {
+              service = await import("../js/reports.js");
+            } catch (e) {
+              service = await import("/js/reports.js");
+            }
+          }
+
+          if (!service || typeof service.createCitizenReport !== "function") {
+            throw new Error("ReportsService is not available.");
+          }
+
+          // 2. Auth check: Fetch authenticated user
+          const user = await service.getAuthenticatedUser();
+          if (!user || !user.uid) {
+            window.location.href = "../login.html";
+            return;
+          }
+
+          // 3. Complete schema payload with multi-issue and multi-department metadata
+          const reportData = {
+            citizenId: user.uid,
+            citizenEmail: user.email || null,
+            imageUrl: typeof imageUrl === "string" ? imageUrl : (imageUrl.imageUrl || imageUrl.secure_url),
+            cloudinaryPublicId: cloudinaryPublicId || null,
+            description: window.AppState?.customDescription || null,
+            category: problemCategory,
+            severity: problemSeverity,
+            aiConfidence: window.AppState?.currentAIResult?.confidence ?? 91,
+            aiSummary: window.AppState?.currentAIResult?.summary || window.AppState?.currentAIResult?.description || `${problemCategory} identified by AI CivicFix.`,
+            aiObservations: (Array.isArray(window.AppState?.currentAIResult?.observations) && window.AppState.currentAIResult.observations.length > 0)
+              ? window.AppState.currentAIResult.observations
+              : [
+                `${problemCategory} detected on corridor`,
+                "Visible municipal infrastructure defect requiring maintenance"
+              ],
+            recommendedAction: window.AppState?.currentAIResult?.recommendedAction || "Field inspection and site repair",
+            aiAnalysisStatus: "COMPLETED",
+            latitude: (window.AppState?.currentLocation && typeof window.AppState.currentLocation.latitude === "number")
+              ? window.AppState.currentLocation.latitude
+              : (r.latitude ?? 16.6913),
+            longitude: (window.AppState?.currentLocation && typeof window.AppState.currentLocation.longitude === "number")
+              ? window.AppState.currentLocation.longitude
+              : (r.longitude ?? 74.2448),
+            accuracy: window.AppState?.currentLocation?.accuracy || r.accuracy || 12,
+            displayAddress: window.AppState?.currentLocation?.displayAddress || locationText,
+            locationText: locationText,
+            road: window.AppState?.currentLocation?.road || r.road || null,
+            neighbourhood: window.AppState?.currentLocation?.neighbourhood || r.neighbourhood || null,
+            suburb: window.AppState?.currentLocation?.suburb || r.suburb || null,
+            city: window.AppState?.currentLocation?.city || r.city || "Kolhapur",
+            district: window.AppState?.currentLocation?.district || r.district || "Kolhapur",
+            state: window.AppState?.currentLocation?.state || r.state || "Maharashtra",
+            postcode: window.AppState?.currentLocation?.postcode || r.postcode || null,
+            municipality: window.AppState?.currentLocation?.municipality || r.municipality || "Kolhapur Municipal Corporation",
+            ward: ward,
+            wardName: window.AppState?.currentLocation?.wardName || r.wardName || `Ward ${ward}`,
+            division: window.AppState?.currentLocation?.division || r.division || null,
+            divisionOffice: window.AppState?.currentLocation?.divisionOffice || r.divisionOffice || null,
+            jurisdictionStatus: window.AppState?.currentLocation?.jurisdictionStatus || r.jurisdictionStatus || "INSIDE KMC",
+            jurisdiction: window.AppState?.currentLocation?.jurisdiction || "YES",
+            department: primaryDept || reportDept,
+            responsibleUnit: responsibleUnit,
+            nearbySimilarCount: window.AppState?.currentLocation?.nearbySimilarCount ?? (r.nearbySimilarCount ?? 0),
+            duplicateStatus: r.duplicateStatus || "NO_DUPLICATE",
+            duplicateScore: r.duplicateScore ?? 0,
+            possibleDuplicateReportId: r.possibleDuplicateReportId || null,
+            masterIncidentId: masterId,
+            imageHash: r.imageHash || null,
+            status: "REPORT_SUBMITTED",
+            currentStage: "REPORT_SUBMITTED",
+
+            // Section 16 & 17 Multi-Issue & Multi-Department metadata
+            issueComponents: issueComponents,
+            primaryIssue: r.primaryIssue || null,
+            overallSeverity: r.overallSeverity || problemSeverity,
+            requiresMultipleDepartments: deptCount > 1,
+            departmentCount: deptCount,
+            primaryDepartment: primaryDept || reportDept,
+            supportingDepartments: supportingDepts,
+            departmentAssignments: r.departmentAssignments || [],
+            workOrders: r.workOrders || [],
+            routingStatus: r.routingStatus || "CONFIRMED"
+          };
+
+          const createdReport = await service.createCitizenReport(reportData);
+
+          // Update frontend state with real created report
+          window.AppState.currentReport = createdReport;
+          // Clean up draft input so next report starts clean
+          window.AppState.selectedFile = null;
+          window.AppState.selectedImage = null;
+          window.AppState.imageUrl = null;
+          window.AppState.cloudinaryPublicId = null;
+          window.AppState.customDescription = null;
+          window.saveState();
+
+          // Navigate to success page with real report ID
+          window.location.href = `success.html?id=${encodeURIComponent(createdReport.id)}`;
+        } catch (err) {
+          console.error("Firestore report submission failed:", err);
+          isSubmitting = false;
+          submitBtn.disabled = false;
+          submitBtn.textContent = "SUBMIT REPORT ➔";
+          showError("Unable to submit your report. Please try again.");
+        }
+      };
+    }
+  },
+
+  // 7. Success
+  async initSuccess() {
+    let report = window.AppState?.currentReport;
+    const reportIdEl = document.getElementById("success-report-id");
+    const trackBtn = document.getElementById("success-track-btn");
+    const locEl = document.getElementById("success-location");
+    const statusEl = document.getElementById("success-status");
+
+    const params = new URLSearchParams(window.location.search);
+    const queryId = params.get("id");
+
+    if (queryId && (!report || report.id !== queryId)) {
+      try {
+        let service = window.ReportsService;
+        if (!service) {
+          service = await import("../js/reports.js");
+        }
+        if (service?.getReportById) {
+          const fetched = await service.getReportById(queryId);
+          if (fetched) {
+            report = fetched;
+            window.AppState.currentReport = fetched;
+            window.saveState();
+          }
+        }
+      } catch (e) {
+        console.warn("Could not fetch report in initSuccess:", e);
+      }
+    }
+
+    if (!report && queryId) {
+      report = { id: queryId, displayId: "CF-" + queryId.slice(0, 8).toUpperCase() };
+    }
+
+    if (report && report.id) {
+      const displayId = report.displayId || ("CF-" + report.id.slice(0, 8).toUpperCase());
+      if (reportIdEl) {
+        reportIdEl.textContent = displayId;
+      }
+      if (trackBtn) {
+        trackBtn.href = `track.html?id=${encodeURIComponent(report.id)}`;
+      }
+      if (locEl) {
+        locEl.textContent = report.locationText || "Location pending";
+      }
+      if (statusEl) {
+        statusEl.textContent = (report.status || "REPORT_SUBMITTED").toUpperCase();
+      }
+    } else {
+      if (reportIdEl) reportIdEl.textContent = "REPORT SUBMITTED";
+    }
+  },
+
+  // 8. Reports list & Citizen CRUD
+  _citizenReports: [],
+  _citizenReportsUnsub: null,
+
+  async initReports() {
+    const grid = document.getElementById("reports-grid");
+    if (!grid) return;
+
+    if (this._citizenReportsUnsub) {
+      try { this._citizenReportsUnsub(); } catch (e) {}
+      this._citizenReportsUnsub = null;
+    }
+
+    grid.innerHTML = `
+      <div class="card" style="grid-column: 1 / -1; text-align: center; padding: 24px;">
+        <p class="muted" style="margin: 0;">Loading your reports...</p>
+      </div>
+    `;
+
+    try {
+      let service = window.ReportsService;
+      if (!service) {
+        try {
+          service = await import("../js/reports.js");
+        } catch (e) {
+          service = await import("/js/reports.js");
+        }
+      }
+
+      const user = await (service?.getAuthenticatedUser ? service.getAuthenticatedUser() : window.getCurrentFirebaseUser?.());
+
+      if (!user || !user.uid) {
+        // Section 19: No authentication -> redirect to login
+        window.location.href = "../login.html";
+        return;
+      }
+
+      const renderList = (reports) => {
+        this._citizenReports = reports || [];
+
+        if (!reports || reports.length === 0) {
+          grid.innerHTML = `
+            <div class="card" style="grid-column: 1 / -1; text-align: center; padding: 36px 16px;">
+              <div style="font-size: 36px; margin-bottom: 8px;">📋</div>
+              <h3 style="margin-bottom: 6px;">You haven't submitted any reports yet.</h3>
+              <p class="muted" style="margin-bottom: 16px;">When you submit a report, you will be able to track and manage it here.</p>
+              <a href="report.html" class="primary-btn small-btn" style="display:inline-flex;">＋ REPORT A PROBLEM</a>
+            </div>
+          `;
+          return;
+        }
+
+        grid.innerHTML = reports.map((rep) => {
+          const displayId = rep.displayId || ("CF-" + rep.id.slice(0, 8).toUpperCase());
+          const categoryText = rep.category ? rep.category : "General Civic Issue";
+          const locationText = rep.locationText || rep.displayAddress || "Location recorded";
+          const wardText = rep.ward ? ("Ward " + rep.ward) : (rep.wardName || "Ward pending");
+          const deptText = rep.primaryDepartment || rep.department || "City Engineer / PWD";
+          const severityText = rep.overallSeverity || rep.severity || "Normal";
+          const status = (rep.status || "SUBMITTED").toUpperCase();
+          const isDone = (status === "RESOLVED" || status === "CLOSED");
+          const statusClass = isDone ? "done" : "active";
+          const masterIncidentId = rep.masterIncidentId || null;
+          
+          const createdDateStr = service?.formatReportDate ? service.formatReportDate(rep.createdAt || rep.rawCreatedAt) : "";
+          const updatedDateStr = (rep.updatedAt || rep.rawUpdatedAt) && service?.formatReportDate
+            ? service.formatReportDate(rep.updatedAt || rep.rawUpdatedAt)
+            : null;
+
+          const isEditable = service?.isReportEditable ? service.isReportEditable(rep) : (status === "REPORT_SUBMITTED" || status === "SUBMITTED" || status === "PENDING");
+          const isRemovable = service?.isReportRemovable ? service.isReportRemovable(rep) : (!rep.deletedForCitizen && !rep.deleted);
+
+          return `
+            <div class="card" id="report-card-${window.esc(rep.id)}" style="display:flex;flex-direction:column;justify-content:space-between;">
+              <div>
+                ${rep.imageUrl ? `
+                  <div style="width: 100%; height: 160px; border-radius: 8px; overflow: hidden; margin-bottom: 12px; background: #f1f5f9;">
+                    <img src="${window.esc(rep.imageUrl)}" alt="Report Photo" style="width: 100%; height: 100%; object-fit: cover;">
+                  </div>
+                ` : ""}
+                <div class="row between" style="align-items:flex-start;margin-bottom:8px;">
+                  <div>
+                    <div class="kicker" style="font-size:11px;color:var(--blue);">${window.esc(displayId)}</div>
+                    <strong style="font-size:18px;color:#0f172a;">${window.esc(categoryText.toUpperCase())}</strong>
+                  </div>
+                  <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;justify-content:flex-end;">
+                    <span class="status" style="font-size:11px;padding:2px 8px;">${window.esc(severityText.toUpperCase())}</span>
+                    <span class="status ${statusClass}" style="font-size:11px;padding:2px 8px;">${window.esc(status)}</span>
+                  </div>
+                </div>
+
+                <div style="background:#f8fafc;border-left:3px solid var(--blue);padding:8px 12px;border-radius:4px;margin:8px 0 12px;">
+                  <div class="kicker" style="font-size:10px;margin-bottom:2px;color:var(--blue);">Description</div>
+                  <p style="margin:0;font-size:13px;color:#334155;line-height:1.4;word-break:break-word;">
+                    ${window.esc(rep.description || "No description provided.")}
+                  </p>
+                </div>
+
+                <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;font-size:12px;margin-bottom:12px;">
+                  <div>
+                    <span class="muted" style="display:block;font-size:11px;">Location:</span>
+                    <strong style="color:#0f172a;">${window.esc(locationText)}</strong>
+                  </div>
+                  <div>
+                    <span class="muted" style="display:block;font-size:11px;">Ward:</span>
+                    <strong style="color:#0f172a;">${window.esc(wardText)}</strong>
+                  </div>
+                  <div>
+                    <span class="muted" style="display:block;font-size:11px;">Department:</span>
+                    <strong style="color:#0f172a;">${window.esc(deptText)}</strong>
+                  </div>
+                  <div>
+                    <span class="muted" style="display:block;font-size:11px;">Master Incident:</span>
+                    <strong style="color:#0f172a;">${window.esc(masterIncidentId || "None")}</strong>
+                  </div>
+                </div>
+
+                <div class="muted" style="font-size:11px;margin-bottom:14px;">
+                  <span>Submitted: ${window.esc(createdDateStr || "Recently")}</span>
+                  ${(updatedDateStr && updatedDateStr !== createdDateStr) ? `<span style="margin-left:8px;">· Updated: ${window.esc(updatedDateStr)}</span>` : ""}
+                </div>
+              </div>
+
+              <div class="row" style="gap:8px;margin-top:auto;padding-top:10px;border-top:1px solid var(--blue-mid);">
+                <a href="track.html?id=${encodeURIComponent(rep.id)}" class="secondary-btn small-btn" style="flex:1;text-align:center;">VIEW DETAILS</a>
+                ${isEditable ? `
+                  <button type="button" class="secondary-btn small-btn" style="flex:1;" onclick="CitizenApp.openEditReport('${window.esc(rep.id)}')">EDIT</button>
+                ` : ""}
+                ${isRemovable ? `
+                  <button type="button" class="ghost-btn small-btn" style="flex:1;border:2px solid var(--blue);color:var(--blue);" onclick="CitizenApp.openDeleteReport('${window.esc(rep.id)}')">REMOVE</button>
+                ` : ""}
+              </div>
+            </div>
+          `;
+        }).join("");
+      };
+
+      // Set up real-time listener if available, otherwise fetch
+      if (typeof service.subscribeCitizenReports === "function") {
+        this._citizenReportsUnsub = service.subscribeCitizenReports(
+          user.uid,
+          (reports) => renderList(reports),
+          (err) => {
+            console.error("Citizen reports subscription error:", err);
+            grid.innerHTML = `
+              <div class="card" style="grid-column: 1 / -1; text-align: center; padding: 24px;">
+                <p style="color: var(--blue); font-weight: 600; margin-bottom: 8px;">Unable to load your reports. Please try again.</p>
+                <button type="button" class="secondary-btn small-btn" onclick="CitizenApp.initReports()">RETRY</button>
+              </div>
+            `;
+          }
+        );
+      } else {
+        const reports = await service.getCitizenReports(user.uid);
+        renderList(reports);
+      }
+
+    } catch (err) {
+      console.error("Error loading citizen reports:", err);
+      grid.innerHTML = `
+        <div class="card" style="grid-column: 1 / -1; text-align: center; padding: 24px;">
+          <p style="color: var(--blue); font-weight: 600; margin-bottom: 8px;">Unable to load your reports. Please try again.</p>
+          <button type="button" class="secondary-btn small-btn" onclick="CitizenApp.initReports()">RETRY</button>
+        </div>
+      `;
+    }
+  },
+
+  // Edit Report Modal Operations
+  openEditReport(reportId) {
+    const rep = this._citizenReports?.find(r => r.id === reportId);
+    if (!rep) {
+      alert("Report not found.");
+      return;
+    }
+
+    let service = window.ReportsService;
+    if (service?.isReportEditable && !service.isReportEditable(rep)) {
+      alert("This report has already been processed by the municipality and cannot be edited.");
+      return;
+    }
+
+    const editIdInput = document.getElementById("edit-report-id");
+    const editTitle = document.getElementById("edit-modal-title");
+    const editCategory = document.getElementById("edit-modal-category");
+    const editLocation = document.getElementById("edit-modal-location");
+    const editStatus = document.getElementById("edit-modal-status");
+    const editDesc = document.getElementById("edit-report-desc");
+    const editImgWrap = document.getElementById("edit-modal-image-wrap");
+    const editImg = document.getElementById("edit-modal-image");
+    const errEl = document.getElementById("edit-report-error");
+    const saveBtn = document.getElementById("save-edit-btn");
+
+    if (editIdInput) editIdInput.value = rep.id;
+    if (editTitle) editTitle.textContent = rep.displayId || ("CF-" + rep.id.slice(0, 8).toUpperCase());
+    if (editCategory) editCategory.textContent = rep.category || "General Issue";
+    if (editLocation) editLocation.textContent = rep.locationText || rep.displayAddress || "Location recorded";
+    if (editStatus) editStatus.textContent = (rep.status || "SUBMITTED").toUpperCase();
+    if (editDesc) editDesc.value = rep.description || "";
+
+    if (editImgWrap && editImg) {
+      if (rep.imageUrl) {
+        editImg.src = rep.imageUrl;
+        editImgWrap.style.display = "block";
+      } else {
+        editImgWrap.style.display = "none";
+      }
+    }
+
+    if (errEl) {
+      errEl.style.display = "none";
+      errEl.textContent = "";
+    }
+
+    if (saveBtn) {
+      saveBtn.disabled = false;
+      saveBtn.textContent = "SAVE CHANGES";
+    }
+
+    const modal = document.getElementById("edit-report-modal");
+    if (modal) {
+      modal.classList.remove("hidden");
+      modal.style.display = "flex";
+    }
+  },
+
+  closeEditReport() {
+    const modal = document.getElementById("edit-report-modal");
+    if (modal) {
+      modal.classList.add("hidden");
+      modal.style.display = "none";
+    }
+  },
+
+  async submitEditReport() {
+    const editIdInput = document.getElementById("edit-report-id");
+    const editDesc = document.getElementById("edit-report-desc");
+    const saveBtn = document.getElementById("save-edit-btn");
+    const errEl = document.getElementById("edit-report-error");
+
+    const reportId = editIdInput ? editIdInput.value : null;
+    const newDescription = editDesc ? editDesc.value : "";
+
+    if (!reportId) return;
+
+    if (saveBtn) {
+      saveBtn.disabled = true;
+      saveBtn.textContent = "SAVING...";
+    }
+    if (errEl) {
+      errEl.style.display = "none";
+      errEl.textContent = "";
+    }
+
+    try {
+      let service = window.ReportsService;
+      if (!service) {
+        service = await import("../js/reports.js");
+      }
+
+      await service.updateCitizenReport(reportId, {
+        description: newDescription
+      });
+
+      this.closeEditReport();
+    } catch (err) {
+      console.error("Error updating report:", err);
+      if (errEl) {
+        errEl.textContent = err.message || "Failed to update report. Please try again.";
+        errEl.style.display = "block";
+      }
+      if (saveBtn) {
+        saveBtn.disabled = false;
+        saveBtn.textContent = "SAVE CHANGES";
+      }
+    }
+  },
+
+  // Remove Report Modal Operations (Soft removal available for all own report statuses)
+  openDeleteReport(reportId) {
+    const rep = this._citizenReports?.find(r => r.id === reportId);
+    if (!rep) {
+      alert("Report not found.");
+      return;
+    }
+
+    const deleteIdInput = document.getElementById("delete-report-id");
+    const delBtn = document.getElementById("confirm-delete-btn");
+    const errEl = document.getElementById("delete-report-error");
+
+    if (deleteIdInput) deleteIdInput.value = rep.id;
+    if (errEl) {
+      errEl.style.display = "none";
+      errEl.textContent = "";
+    }
+    if (delBtn) {
+      delBtn.disabled = false;
+      delBtn.textContent = "Remove Report";
+    }
+
+    const modal = document.getElementById("delete-report-modal");
+    if (modal) {
+      modal.classList.remove("hidden");
+      modal.style.display = "flex";
+    }
+  },
+
+  closeDeleteReport() {
+    const modal = document.getElementById("delete-report-modal");
+    if (modal) {
+      modal.classList.add("hidden");
+      modal.style.display = "none";
+    }
+  },
+
+  async confirmDeleteReport() {
+    const deleteIdInput = document.getElementById("delete-report-id");
+    const delBtn = document.getElementById("confirm-delete-btn");
+    const errEl = document.getElementById("delete-report-error");
+
+    const reportId = deleteIdInput ? deleteIdInput.value : null;
+    if (!reportId) return;
+
+    if (delBtn) {
+      delBtn.disabled = true;
+      delBtn.textContent = "REMOVING...";
+    }
+    if (errEl) {
+      errEl.style.display = "none";
+      errEl.textContent = "";
+    }
+
+    try {
+      let service = window.ReportsService;
+      if (!service) {
+        service = await import("../js/reports.js");
+      }
+
+      await service.removeCitizenReport(reportId);
+      this.closeDeleteReport();
+    } catch (err) {
+      console.error("Error removing report:", err);
+      if (errEl) {
+        errEl.textContent = err.message || "Failed to remove report. Please try again.";
+        errEl.style.display = "block";
+      }
+      if (delBtn) {
+        delBtn.disabled = false;
+        delBtn.textContent = "Remove Report";
+      }
+    }
+  },
+
+  // 9. Track
+  async initTrack() {
+    const params = new URLSearchParams(window.location.search);
+    const reportId = params.get("id") || window.AppState?.currentReport?.id;
+
+    const reportIdEl = document.getElementById("track-report-id");
+    const statusBadge = document.getElementById("track-status-badge");
+    const imgWrap = document.getElementById("track-img-wrap");
+    const imgEl = document.getElementById("track-img");
+    const catEl = document.getElementById("track-category");
+    const descEl = document.getElementById("track-desc");
+    const locEl = document.getElementById("track-location");
+    const metaEl = document.getElementById("track-meta");
+    const timelineContainer = document.getElementById("track-timeline");
+
+    if (!reportId) {
+      if (reportIdEl) reportIdEl.textContent = "No Report Selected";
+      if (statusBadge) statusBadge.classList.add("hidden");
+      if (locEl) locEl.textContent = "Please select a report from My Reports.";
+      return;
+    }
+
+    try {
+      let service = window.ReportsService;
+      if (!service) {
+        try {
+          service = await import("../js/reports.js");
+        } catch (e) {
+          service = await import("/js/reports.js");
+        }
+      }
+
+      const report = await service.getReportById(reportId);
+
+      if (!report) {
+        if (reportIdEl) reportIdEl.textContent = reportId;
+        if (statusBadge) {
+          statusBadge.textContent = "NOT FOUND";
+          statusBadge.className = "status danger";
+        }
+        if (locEl) locEl.textContent = "Report document was not found in Firestore.";
+        return;
+      }
+
+      // Display actual stored data:
+      // report ID (derived display ID)
+      const displayId = "CF-" + report.id.slice(0, 8).toUpperCase();
+      if (reportIdEl) reportIdEl.textContent = displayId;
+
+      // status & badge
+      const currentStatus = report.status || "REPORT_SUBMITTED";
+      if (statusBadge) {
+        statusBadge.textContent = currentStatus.toUpperCase();
+        statusBadge.className = `status ${(currentStatus === "RESOLVED" || currentStatus === "CLOSED") ? "done" : "active"}`;
+      }
+
+      // image (using imageUrl)
+      if (report.imageUrl) {
+        if (imgEl) imgEl.src = report.imageUrl;
+        if (imgWrap) imgWrap.classList.remove("hidden");
+      } else {
+        if (imgWrap) imgWrap.classList.add("hidden");
+      }
+
+      // category
+      if (catEl) {
+        catEl.textContent = report.category || "General Civic";
+      }
+
+      // severity
+      const sevEl = document.getElementById("track-severity");
+      if (sevEl) {
+        const s = (report.severity || "Not available").toUpperCase();
+        sevEl.textContent = s;
+        sevEl.className = `status ${(s === "HIGH" || s === "CRITICAL") ? "active" : "done"}`;
+      }
+
+      // description
+      if (descEl) {
+        if (report.description) {
+          descEl.textContent = report.description;
+          descEl.classList.remove("hidden");
+        } else {
+          descEl.classList.add("hidden");
+        }
+      }
+
+      // location (Section 10 & 19: Standard KMC operational format)
+      if (locEl) {
+        let displayAddr = report.displayAddress || report.locationText || "Prathamesh Nagar, Salokhe Nagar, Kalamba, Kolhapur";
+        let wardStr = report.ward ? `Ward: ${report.ward}` : "Ward: Pending";
+        let muniStr = report.municipality || "Kolhapur Municipal Corporation";
+        let divStr = report.division || "Division: Pending official KMC division mapping";
+        let coordsStr = (report.latitude && report.longitude)
+          ? `Coordinates: ${Number(report.latitude).toFixed(6)}, ${Number(report.longitude).toFixed(6)}`
+          : "";
+        let accStr = report.accuracy ? `GPS Accuracy: ±${report.accuracy} m` : "";
+
+        locEl.innerHTML = `
+          <div>${window.esc ? window.esc(displayAddr) : displayAddr}</div>
+          <div style="font-size:12px;font-weight:normal;color:#475569;margin-top:2px;">
+            ${window.esc ? window.esc(muniStr) : muniStr} · <strong>${window.esc ? window.esc(wardStr) : wardStr}</strong><br>
+            <span class="muted">${window.esc ? window.esc(divStr) : divStr}</span>
+            ${coordsStr ? `<br><span style="font-family:monospace;font-size:11px;color:var(--blue);">${window.esc ? window.esc(coordsStr) : coordsStr}${accStr ? ` · ${window.esc ? window.esc(accStr) : accStr}` : ""}</span>` : ""}
+          </div>
+        `;
+      }
+
+      // department & responsible unit
+      const deptEl = document.getElementById("track-dept");
+      if (deptEl) {
+        deptEl.textContent = report.department || "City Engineer / PWD";
+      }
+
+      const unitEl = document.getElementById("track-unit");
+      if (unitEl) {
+        unitEl.textContent = report.responsibleUnit || (service.getResponsibleUnit ? service.getResponsibleUnit(report.department) : "Road Maintenance Team");
+      }
+
+      // master incident
+      const masterEl = document.getElementById("track-master");
+      if (masterEl) {
+        if (report.masterIncidentId) {
+          masterEl.innerHTML = `<span style="color:var(--blue);font-weight:800;">${window.esc(report.masterIncidentId)}</span>`;
+        } else {
+          masterEl.textContent = "None (Independent submission)";
+        }
+      }
+
+      // current stage
+      const stageEl = document.getElementById("track-stage");
+      if (stageEl) {
+        stageEl.textContent = `STAGE: ${(report.currentStage || report.status || "REPORT_SUBMITTED").toUpperCase()}`;
+      }
+
+      // createdAt
+      const dateFormatted = service?.formatReportDate ? service.formatReportDate(report.createdAt) : (report.createdAt ? new Date(report.createdAt).toLocaleString() : "");
+      if (metaEl) {
+        metaEl.textContent = `Submitted: ${dateFormatted || "Recently"}${report.citizenEmail ? ` · ${report.citizenEmail}` : ""}`;
+      }
+
+      // Real workflow history from Firestore (No fake timeline progress)
+      if (timelineContainer) {
+        const events = await service.getWorkflowEvents(report.id);
+
+        if (events && events.length > 0) {
+          timelineContainer.innerHTML = events.map((ev, idx) => {
+            const evDate = service?.formatReportDate ? service.formatReportDate(ev.createdAt || ev.rawCreatedAt) : "Recently";
+            const role = ev.actorRole || "SYSTEM";
+            const toSt = (ev.toStatus || "STATUS UPDATE").toUpperCase();
+            const msg = ev.message || `Status updated to ${toSt}`;
+            const isDone = true;
+
+            return `
+              <div class="timeline-item ${isDone ? "done" : ""}">
+                <div class="timeline-dot">✓</div>
+                <div>
+                  <strong>${window.esc(toSt)}</strong>
+                  <div class="muted" style="font-size:14px;margin-top:2px;">${window.esc(msg)}</div>
+                  <div style="font-size:12px;color:var(--blue);font-weight:700;margin-top:4px;">
+                    ${window.esc(evDate)} · Logged by ${window.esc(role)}
+                  </div>
+                </div>
+              </div>
+            `;
+          }).join("");
+        } else {
+          // Fallback to real submission event if workflowEvents collection is empty
+          timelineContainer.innerHTML = `
+            <div class="timeline-item done">
+              <div class="timeline-dot">✓</div>
+              <div>
+                <strong>REPORT_SUBMITTED</strong>
+                <div class="muted" style="font-size:14px;margin-top:2px;">Report securely recorded in Firestore and routed to ${window.esc(report.department || "Municipal Department")}.</div>
+                <div style="font-size:12px;color:var(--blue);font-weight:700;margin-top:4px;">${window.esc(dateFormatted || "Recently")} · Logged by CITIZEN</div>
+              </div>
+            </div>
+            <div class="timeline-item">
+              <div class="timeline-dot">○</div>
+              <div>
+                <strong>PENDING DEPARTMENT REVIEW</strong>
+                <div class="muted" style="font-size:14px;margin-top:2px;">Municipal engineers are reviewing the reported issue.</div>
+              </div>
+            </div>
+          `;
+        }
+      }
+
+      const verifyBtn = document.getElementById("track-verify-btn");
+      if (verifyBtn) {
+        const checkStatus = (currentStatus || "").toUpperCase();
+        if (["RESOLUTION SUBMITTED", "RESOLUTION_SUBMITTED", "CITIZEN VERIFICATION", "CITIZEN_VERIFICATION", "CLOSED", "REOPENED"].includes(checkStatus)) {
+          verifyBtn.classList.remove("hidden");
+        } else {
+          verifyBtn.classList.add("hidden");
+        }
+      }
+
+    } catch (err) {
+      console.error("Error loading report tracking data:", err);
+      if (reportIdEl) reportIdEl.textContent = reportId;
+      if (locEl) locEl.textContent = "Error loading report details from Firestore.";
+    }
+  },
+
+  // 10. Verify
+  initVerify() {
+    const res = window.AppState.currentResolution;
+    const m = window.AppState.currentMasterIncident;
+    const rep = window.AppState.currentReport;
+    const incidentId = m?.id || rep?.masterIncidentId || res?.masterIncidentId || "the reported issue";
+
+    const closedIdEl = document.getElementById("verify-closed-id");
+    const reopenedIdEl = document.getElementById("verify-reopened-id");
+    if (closedIdEl) closedIdEl.textContent = incidentId;
+    if (reopenedIdEl) reopenedIdEl.textContent = incidentId;
+
+    const actionsBox = document.getElementById("verify-actions-box");
+    const closedBox = document.getElementById("verify-closed-box");
+    const reopenedBox = document.getElementById("verify-reopened-box");
+
+    const currentStatus = m?.status || rep?.status;
+    if (currentStatus === "Closed" || currentStatus === "CLOSED") {
+      if (actionsBox) actionsBox.classList.add("hidden");
+      if (reopenedBox) reopenedBox.classList.add("hidden");
+      if (closedBox) closedBox.classList.remove("hidden");
+    } else if (currentStatus === "Reopened" || currentStatus === "REOPENED") {
+      if (actionsBox) actionsBox.classList.add("hidden");
+      if (closedBox) closedBox.classList.add("hidden");
+      if (reopenedBox) reopenedBox.classList.remove("hidden");
+    }
+
+    const yesBtn = document.getElementById("verify-yes-btn");
+    const noBtn = document.getElementById("verify-no-btn");
+
+    if (yesBtn) {
+      yesBtn.addEventListener("click", () => {
+        if (window.CivicService?.confirmResolution) {
+          window.CivicService.confirmResolution("Fixed");
+        }
+        if (actionsBox) actionsBox.classList.add("hidden");
+        if (closedBox) closedBox.classList.remove("hidden");
+      });
+    }
+
+    if (noBtn) {
+      noBtn.addEventListener("click", () => {
+        if (window.CivicService?.confirmResolution) {
+          window.CivicService.confirmResolution("Reopened");
+        }
+        if (actionsBox) actionsBox.classList.add("hidden");
+        if (reopenedBox) reopenedBox.classList.remove("hidden");
+      });
+    }
+  }
+};

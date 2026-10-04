@@ -1,0 +1,191 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Department Operations — AI CivicFix</title>
+  <link rel="stylesheet" href="../css/style.css">
+  <link rel="stylesheet" href="../css/admin.css">
+</head>
+<body>
+  <div class="admin-layout">
+    <div id="sidebar-mount"></div>
+
+    <div class="admin-main">
+      <div id="topbar-mount"></div>
+
+      <main class="admin-content">
+        <!-- Switcher row for demo presentation -->
+        <div id="dept-switcher-wrap" class="row between" style="margin-bottom:16px;">
+          <div class="kicker">Department Operations</div>
+          <div class="row" id="dept-select-container">
+            <label class="label" for="department-selector" style="margin:0;font-size:13px;">View Department:</label>
+            <select id="department-selector" class="select" style="min-height:40px;padding:6px 12px;font-size:14px;width:auto;">
+              <option value="City Engineer / PWD">City Engineer / PWD</option>
+              <option value="Health & Sanitation">Health & Sanitation</option>
+              <option value="Water Supply & Drainage">Water Supply & Drainage</option>
+              <option value="Electricity">Electricity</option>
+              <option value="Garden">Garden</option>
+              <option value="Encroachment">Encroachment</option>
+            </select>
+          </div>
+        </div>
+
+        <!-- Dynamic Department Banner -->
+        <div class="role-banner">
+          <div class="kicker" style="letter-spacing:0.12em;">Kolhapur Municipal Corporation</div>
+          <h1 id="dept-title" style="color:#FFFFFF;font-size:36px;margin:6px 0 4px;">City Engineer / PWD</h1>
+          <p id="dept-subtitle" style="margin:0 0 6px;font-size:18px;font-weight:700;">Department Admin Dashboard</p>
+          <p id="dept-officer" style="margin:0 0 10px;font-size:15px;opacity:0.9;">Ramesh Krishnakant Maskar · City Engineer</p>
+          <span class="demo-label" style="border-color:#FFFFFF;color:#FFFFFF;background:transparent;">Configured Municipal Service Boundary</span>
+        </div>
+
+        <!-- Metrics Grid -->
+        <section class="section compact">
+          <div class="grid grid-4">
+            <div class="card metric">
+              <span class="metric-label">TOTAL REPORTS</span>
+              <span id="metric-total-reports" class="metric-value">0</span>
+            </div>
+            <div class="card metric">
+              <span class="metric-label">ACTIVE REPORTS</span>
+              <span id="metric-active-reports" class="metric-value">0</span>
+            </div>
+            <div class="card metric">
+              <span class="metric-label">HIGH PRIORITY</span>
+              <span id="metric-high-priority" class="metric-value">0</span>
+            </div>
+            <div class="card metric">
+              <span class="metric-label">RESOLVED</span>
+              <span id="metric-resolved-reports" class="metric-value">0</span>
+            </div>
+          </div>
+        </section>
+
+        <!-- Department Queue Table -->
+        <div class="row between" style="margin-bottom:14px;">
+          <div>
+            <div class="kicker">Department Queue</div>
+            <h2 id="dept-queue-heading" style="font-size:28px;margin:0;">DEPARTMENT CITIZEN REPORTS</h2>
+          </div>
+          <span id="dept-badge" class="demo-label">City Engineer / PWD</span>
+        </div>
+
+        <div class="card" style="padding:0;">
+          <div class="table-wrap">
+            <table class="data-table">
+              <thead>
+                <tr>
+                  <th>Report ID</th>
+                  <th>Image</th>
+                  <th>Category</th>
+                  <th>Description</th>
+                  <th>Location</th>
+                  <th>Ward</th>
+                  <th>Severity</th>
+                  <th>Status</th>
+                  <th>Created</th>
+                  <th>Master Incident</th>
+                </tr>
+              </thead>
+              <tbody id="dept-issues-table">
+                <tr>
+                  <td colspan="10" style="text-align:center;padding:32px 16px;">
+                    Loading department reports from Firestore...
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <div style="text-align:center;margin-top:28px;">
+          <span class="demo-label">AI CivicFix — Hackathon Prototype</span>
+        </div>
+      </main>
+    </div>
+  </div>
+
+  <!-- Report Detail Modal -->
+  <div id="report-detail-modal" class="dept-modal-backdrop hidden" onclick="if(event.target===this) AdminApp.closeReportModal();">
+    <div class="dept-modal-card" role="dialog" aria-modal="true" aria-labelledby="modal-report-id">
+      <div class="dept-modal-header">
+        <div>
+          <div class="kicker">Citizen Report Detail</div>
+          <h2 id="modal-report-id" style="margin:2px 0 0;font-size:24px;color:var(--blue);">CF-1024</h2>
+        </div>
+        <button type="button" class="ghost-btn small-btn" onclick="AdminApp.closeReportModal()" aria-label="Close modal">✕</button>
+      </div>
+
+      <div class="dept-modal-body">
+        <div class="dept-modal-media">
+          <img id="modal-report-img" src="" alt="Report photo" style="width:100%;max-height:300px;object-fit:cover;border-radius:10px;border:1px solid var(--blue-mid);display:block;background:#edf3fb;">
+          <div style="margin-top:8px;text-align:right;">
+            <a id="modal-report-img-link" href="#" target="_blank" rel="noopener noreferrer" style="font-size:12px;font-weight:700;color:var(--blue);text-decoration:underline;">Open image in new tab ↗</a>
+          </div>
+        </div>
+
+        <div class="dept-modal-info">
+          <div class="row between" style="margin-bottom:12px;">
+            <span id="modal-report-category" style="font-size:18px;font-weight:900;color:var(--blue);">Pothole</span>
+            <div class="row" style="gap:6px;">
+              <span id="modal-report-severity" class="status active">HIGH</span>
+              <span id="modal-report-status" class="status">SUBMITTED</span>
+            </div>
+          </div>
+
+          <div class="card compact" style="margin-bottom:12px;background:#F5F7FA;">
+            <div class="kicker">Description</div>
+            <p id="modal-report-desc" style="margin:4px 0 0;font-size:14px;color:var(--blue);line-height:1.45;">Not available</p>
+          </div>
+
+          <div class="grid grid-2" style="gap:12px;margin-bottom:12px;">
+            <div class="card compact">
+              <div class="kicker">Location</div>
+              <div id="modal-report-location" style="font-size:14px;font-weight:700;color:var(--blue);margin-top:2px;">Not available</div>
+              <div id="modal-report-ward" class="muted" style="font-size:12px;margin-top:2px;">Ward: Not available</div>
+            </div>
+            <div class="card compact">
+              <div class="kicker">Master Incident</div>
+              <div id="modal-report-master" style="font-size:14px;font-weight:700;color:var(--blue);margin-top:2px;">None</div>
+              <div class="muted" style="font-size:12px;margin-top:2px;">Underlying physical issue</div>
+            </div>
+          </div>
+
+          <div class="row between" style="font-size:12px;color:var(--blue);opacity:0.8;padding-top:8px;border-top:1px solid var(--blue-mid);">
+            <span id="modal-report-dept">Department: City Engineer / PWD</span>
+            <span id="modal-report-time">Submitted: Recently</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="dept-modal-footer" style="padding-top:12px;display:flex;justify-content:flex-end;">
+        <button type="button" class="primary-btn" onclick="AdminApp.closeReportModal()">Close</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="../js/mock-data.js"></script>
+  <script src="../js/state.js"></script>
+  <script type="module" src="../js/auth.js"></script>
+  <script type="module" src="../js/reports.js"></script>
+  <script src="../js/services.js"></script>
+  <script src="../js/routing.js"></script>
+  <script src="../js/admin.js"></script>
+  <script src="../js/app.js"></script>
+  <script type="module">
+    import { subscribeDepartmentReports, getDepartmentReports, formatReportDate } from "../js/reports.js";
+    import { auth, db } from "../js/firebase-init.js";
+    window.ReportsService = window.ReportsService || {};
+    window.ReportsService.subscribeDepartmentReports = subscribeDepartmentReports;
+    window.ReportsService.getDepartmentReports = getDepartmentReports;
+    window.ReportsService.formatReportDate = formatReportDate;
+    window.ReportsService.auth = auth;
+    window.ReportsService.db = db;
+
+    document.getElementById("sidebar-mount").innerHTML = renderAdminSidebar("department");
+    document.getElementById("topbar-mount").innerHTML = renderAdminTopbar();
+    AdminApp.initDepartment();
+  </script>
+</body>
+</html>

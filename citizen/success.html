@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Report Submitted — AI CivicFix</title>
+  <link rel="stylesheet" href="../css/style.css">
+  <link rel="stylesheet" href="../css/citizen.css">
+</head>
+<body class="citizen-page">
+  <div id="header-mount"></div>
+
+  <main class="citizen-content">
+    <div class="narrow">
+      <div class="result-hero">
+        <div style="font-size:58px;font-weight:950;color:var(--blue);">✓</div>
+        <h1 style="font-size:36px;margin:8px 0 12px;">REPORT SUBMITTED</h1>
+        <p style="font-size:18px;">Your report has been linked to an existing physical civic problem.</p>
+
+        <div class="card no-shadow" style="border:1px solid var(--blue-mid);margin-top:24px;text-align:left;">
+          <div class="kicker">Your Citizen Ticket</div>
+          <h2 id="success-report-id" style="font-size:32px;margin:6px 0 16px;word-break:break-all;">Loading...</h2>
+
+          <div class="divider"></div>
+
+          <div class="kicker">Status</div>
+          <h3 id="success-status" style="font-size:24px;margin:6px 0 4px;">SUBMITTED</h3>
+          <p style="font-weight:700;margin-bottom:8px;">Report securely recorded in Firestore</p>
+
+          <p id="success-location" class="muted" style="margin-bottom:0;">
+            Location recorded
+          </p>
+        </div>
+      </div>
+
+      <div class="row" style="margin-top:22px;">
+        <a id="success-track-btn" href="track.html" class="primary-btn" style="flex:1;">
+          TRACK REPORT ➔
+        </a>
+        <a href="reports.html" class="secondary-btn" style="flex:1;">
+          MY REPORTS
+        </a>
+      </div>
+
+      <div style="text-align:center;margin-top:28px;">
+        <span class="demo-label">AI CivicFix — Hackathon Prototype</span>
+      </div>
+    </div>
+  </main>
+
+  <div id="nav-mount"></div>
+
+  <script src="../js/mock-data.js"></script>
+  <script src="../js/state.js"></script>
+  <script type="module" src="../js/auth.js"></script>
+  <script type="module" src="../js/reports.js"></script>
+  <script src="../js/services.js"></script>
+  <script src="../js/citizen.js"></script>
+  <script src="../js/app.js"></script>
+  <script>
+    document.getElementById("header-mount").innerHTML = renderGlobalHeader({ role: "citizen" });
+    document.getElementById("nav-mount").innerHTML = renderCitizenNav("home");
+    CitizenApp.initSuccess();
+  </script>
+</body>
+</html>

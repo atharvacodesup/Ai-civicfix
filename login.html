@@ -1,0 +1,233 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Login — AI CivicFix Hackathon Prototype</title>
+  <link rel="stylesheet" href="css/style.css">
+  <link rel="stylesheet" href="css/login.css">
+</head>
+
+<body class="login-body">
+  <div class="login-page">
+    <!-- LEFT SECTION: Branding & Content (AI CivicFix Blue #0B3D91) -->
+    <section class="login-left">
+      <!-- Top-left HOME / BACK icon -->
+      <a href="index.html" class="login-home-btn" title="Back to Home" aria-label="Back to Home">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"
+          stroke-linecap="round" stroke-linejoin="round">
+          <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" />
+          <polyline points="9 22 9 12 15 12 15 22" />
+        </svg>
+      </a>
+
+      <!-- Vertically balanced main branding block -->
+      <div class="login-left-content">
+        <span class="login-kicker">AI &amp; Automation</span>
+        <h1 class="login-brand-title">AI CivicFix</h1>
+        <p class="login-brand-subtitle">From Citizen Complaints to Verified Municipal Action</p>
+        <p class="login-brand-desc">Turn citizen evidence into structured physical incidents, municipal action and
+          verified fixes.</p>
+
+        <!-- Essential AI CivicFix workflow pipeline -->
+        <div class="login-pipeline">
+          <div class="pipeline-node">
+            <span class="pipeline-indicator">●</span>
+            <span class="pipeline-label">Citizen Evidence</span>
+          </div>
+          <div class="pipeline-connector">&darr;</div>
+          <div class="pipeline-node">
+            <span class="pipeline-indicator">●</span>
+            <span class="pipeline-label">Master Incident</span>
+          </div>
+          <div class="pipeline-connector">&darr;</div>
+          <div class="pipeline-node">
+            <span class="pipeline-indicator">●</span>
+            <span class="pipeline-label">Verified Fix</span>
+          </div>
+        </div>
+
+        <div class="login-location-tag">
+          Kolhapur Municipal Corporation (KMC)
+        </div>
+      </div>
+    </section>
+
+    <!-- RIGHT SECTION: Centered Sign-In Area (Pure White #FFFFFF) -->
+    <section class="login-right">
+      <div class="login-container">
+        <div class="login-header">
+          <h2 class="login-title">Sign In</h2>
+          <p class="login-description">Enter your email and password to access AI CivicFix.</p>
+        </div>
+
+        <div id="login-error" class="login-error-msg"
+          style="display:none;color:#b91c1c;background:#fef2f2;border:1px solid #fecaca;border-radius:8px;padding:10px 14px;font-size:14px;font-weight:600;margin-bottom:16px;">
+        </div>
+
+        <form id="login-form" class="login-form" onsubmit="handleLogin(event)">
+          <div class="login-field">
+            <label class="login-label" for="login-email">Mobile / Email</label>
+            <input id="login-email" class="login-input" type="text" placeholder="Enter email / username"
+              autocomplete="username">
+          </div>
+
+          <div class="login-field">
+            <label class="login-label" for="login-password">Password</label>
+            <input id="login-password" class="login-input" type="password" placeholder="Enter password"
+              autocomplete="current-password">
+          </div>
+
+          <button type="submit" id="login-submit-btn" class="login-submit-btn">
+            SIGN IN
+          </button>
+        </form>
+
+        <div style="display:flex;align-items:center;margin:18px 0;color:#8da5c4;font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:0.06em;">
+          <span style="flex:1;border-bottom:1px solid #d7e3f4;"></span>
+          <span style="padding:0 12px;">OR</span>
+          <span style="flex:1;border-bottom:1px solid #d7e3f4;"></span>
+        </div>
+
+        <button type="button" id="google-login-btn" class="google-login-btn">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" style="flex-shrink:0;">
+            <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/>
+            <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/>
+            <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z" fill="#FBBC05"/>
+            <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z" fill="#EA4335"/>
+          </svg>
+          CONTINUE WITH GOOGLE
+        </button>
+
+        <div class="login-supporting">
+          <p class="login-prototype-note">AI CivicFix &mdash; Hackathon Prototype</p>
+          <p class="login-demo-hint">Pre-Firebase demo authentication active</p>
+        </div>
+      </div>
+    </section>
+  </div>
+
+  <script src="js/mock-data.js"></script>
+  <script src="js/state.js"></script>
+  <script type="module">
+    import { loginUser, loginWithGoogle, mapAuthError } from "./js/auth.js";
+
+    const emailInput = document.getElementById("login-email");
+    const passwordInput = document.getElementById("login-password");
+    const submitBtn = document.getElementById("login-submit-btn");
+    const googleBtn = document.getElementById("google-login-btn");
+    const errorEl = document.getElementById("login-error");
+    const loginForm = document.getElementById("login-form");
+
+    let isSubmitting = false;
+
+    async function handleLogin(event) {
+      if (event && event.preventDefault) {
+        event.preventDefault();
+      }
+
+      if (isSubmitting) return;
+
+      if (errorEl) {
+        errorEl.style.display = "none";
+        errorEl.textContent = "";
+      }
+
+      const email = emailInput ? emailInput.value : "";
+      const password = passwordInput ? passwordInput.value : "";
+
+      const originalText = submitBtn ? submitBtn.textContent : "SIGN IN";
+      if (submitBtn) {
+        submitBtn.disabled = true;
+        submitBtn.textContent = "Signing in...";
+      }
+
+      isSubmitting = true;
+
+      try {
+        await loginUser(email, password);
+      } catch (err) {
+        if (submitBtn) {
+          submitBtn.disabled = false;
+          submitBtn.textContent = originalText;
+        }
+        isSubmitting = false;
+        const message = mapAuthError(err, false);
+        if (errorEl) {
+          errorEl.textContent = message;
+          errorEl.style.display = "block";
+        } else {
+          alert(message);
+        }
+      }
+    }
+
+    async function handleGoogleLogin(event) {
+      if (event && event.preventDefault) {
+        event.preventDefault();
+      }
+
+      if (isSubmitting) return;
+
+      if (errorEl) {
+        errorEl.style.display = "none";
+        errorEl.textContent = "";
+      }
+
+      const originalContent = googleBtn ? googleBtn.innerHTML : "CONTINUE WITH GOOGLE";
+      if (googleBtn) {
+        googleBtn.disabled = true;
+        googleBtn.innerHTML = "Signing in with Google...";
+      }
+
+      isSubmitting = true;
+
+      try {
+        await loginWithGoogle();
+      } catch (err) {
+        console.error("Firebase Google Sign-In Error:", err);
+        if (err.code) console.error("Error Code:", err.code);
+        if (err.message) console.error("Error Message:", err.message);
+        if (err.customData) console.error("Error CustomData:", err.customData);
+
+        if (err.code === "auth/unauthorized-domain") {
+          console.warn("[Firebase Authorized Domain] The current origin (" + window.location.origin + ") is not in Firebase Console's Authorized Domains list. To fix: in Firebase Console > Authentication > Settings > Authorized domains, add your domain (e.g. 127.0.0.1 or localhost), or open via http://localhost:8000/login.html.");
+        }
+
+        if (googleBtn) {
+          googleBtn.disabled = false;
+          googleBtn.innerHTML = originalContent;
+        }
+        isSubmitting = false;
+        const message = mapAuthError(err, true);
+        if (errorEl) {
+          errorEl.textContent = message;
+          errorEl.style.display = "block";
+        } else {
+          alert(message);
+        }
+      }
+    }
+
+    window.handleLogin = handleLogin;
+    window.handleGoogleLogin = handleGoogleLogin;
+
+    if (loginForm) {
+      loginForm.addEventListener("submit", handleLogin);
+    }
+    if (googleBtn) {
+      googleBtn.addEventListener("click", handleGoogleLogin);
+    }
+
+    // Clear error message when user starts typing
+    emailInput?.addEventListener("input", () => {
+      if (errorEl) errorEl.style.display = "none";
+    });
+    passwordInput?.addEventListener("input", () => {
+      if (errorEl) errorEl.style.display = "none";
+    });
+  </script>
+</body>
+
+</html>

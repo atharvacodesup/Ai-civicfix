@@ -1,0 +1,6 @@
+2026/10/04-00:28:12.166 3f8 Creating DB C:\Users\Atharv Naik\Desktop\AI-CivicFix-Manual-UI\scratch\edge-profile\Default\IndexedDB\http_localhost_8000.indexeddb.leveldb since it was missing.
+2026/10/04-00:28:12.172 3f8 Reusing MANIFEST C:\Users\Atharv Naik\Desktop\AI-CivicFix-Manual-UI\scratch\edge-profile\Default\IndexedDB\http_localhost_8000.indexeddb.leveldb/MANIFEST-000001
+2026/10/04-00:28:12.183 165c Level-0 table #5: started
+2026/10/04-00:28:12.186 165c Level-0 table #5: 1764 bytes OK
+2026/10/04-00:28:12.187 165c Delete type=0 #3
+2026/10/04-00:28:12.187 165c Manual compaction at level-0 from '\x00\x01\x00\x00\x00' @ 72057594037927935 : 1 .. '\x00\x02\x00\x00\x00' @ 0 : 0; will stop at (end)

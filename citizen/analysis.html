@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Understanding Your Report — AI CivicFix</title>
+  <link rel="stylesheet" href="../css/style.css">
+  <link rel="stylesheet" href="../css/citizen.css">
+</head>
+<body class="citizen-page">
+  <div id="header-mount"></div>
+
+  <main class="citizen-content">
+    <div class="narrow">
+      <div class="progress-steps">
+        <div class="progress-step done">1 PHOTO ✓</div>
+        <div class="progress-step active">AI UNDERSTANDING</div>
+        <div class="progress-step">3 CONFIRM</div>
+      </div>
+
+      <h1 style="font-size:34px;margin-bottom:8px;">Understanding Your Report</h1>
+      <p class="muted" style="margin-bottom:24px;">The system automatically identifies the physical problem from your evidence.</p>
+
+      <!-- Loading State -->
+      <div id="ai-loading-state" class="result-hero">
+        <div class="ai-label">AI ANALYSIS</div>
+        <h2 id="ai-loading-title" style="margin-top:18px;">Analyzing your report...</h2>
+        <div style="margin:24px auto;width:100%;height:12px;border:2px solid var(--blue);border-radius:999px;overflow:hidden;background:var(--blue-light);">
+          <div class="ai-pulse-bar" style="height:100%;width:70%;background:var(--blue);"></div>
+        </div>
+        <p id="ai-loading-subtitle" class="muted" style="margin-bottom:0;">Processing photo evidence and description with Gemini AI...</p>
+      </div>
+
+      <!-- Error State -->
+      <div id="ai-error-state" class="result-hero hidden" style="border: 1px solid #fecaca; background: #fff5f5;">
+        <div class="ai-label" style="background:#fee2e2; color:#b91c1c;">AI ANALYSIS ERROR</div>
+        <h2 style="margin-top:18px; color:#b91c1c;">AI analysis could not be completed.</h2>
+        <p id="ai-error-detail" class="muted" style="margin:12px auto 20px; max-width:540px; color:#991b1b;"></p>
+        <div style="display:flex; gap:12px; justify-content:center; flex-wrap:wrap;">
+          <button type="button" id="retry-analysis-btn" class="primary-btn" style="min-width:180px;">
+            Retry Analysis
+          </button>
+          <a href="report.html" class="secondary-btn" style="min-width:140px; text-align:center;">
+            Back to Report
+          </a>
+        </div>
+      </div>
+
+      <!-- Result State -->
+      <!-- Result State -->
+      <div id="ai-result-state" class="stack hidden">
+        <div class="photo-preview">
+          <img id="analysis-preview-img" src="../assets/report-01.svg" alt="Citizen report photo">
+        </div>
+
+        <!-- Ambiguous / Low Confidence Alert Banner -->
+        <div id="ai-ambiguous-alert" class="callout hidden" style="border-left:4px solid #f59e0b;background:#fefce8;color:#92400e;margin-top:0;">
+          <div class="kicker" style="color:#b45309;margin-bottom:4px;">Manual Review Required</div>
+          <p id="ai-ambiguous-msg" style="margin:0;font-size:14px;font-weight:600;">
+            AI could not confidently identify the civic issue. Please review the image and description. A municipal review team will manually evaluate this report.
+          </p>
+        </div>
+
+        <!-- Single Issue View (Shown when 1 issue component is detected) -->
+        <div id="single-issue-view" class="stack" style="gap:16px;">
+          <div class="result-hero">
+            <div class="ai-label">AI ANALYSIS</div>
+            
+            <div class="kicker" style="margin-top:20px;">Issue</div>
+            <div class="result-type" id="analysis-issue-type">POTHOLE</div>
+            
+            <div style="display:flex; gap:10px; justify-content:center; flex-wrap:wrap; margin:12px 0 16px;">
+              <span id="analysis-severity-pill" class="status active" style="font-size:14px; padding:6px 16px;">
+                Severity: <strong id="analysis-severity-val">High</strong>
+              </span>
+              <span id="analysis-confidence-pill" class="status" style="font-size:14px; padding:6px 16px; background:var(--blue-light); color:var(--blue); border:1px solid var(--blue);">
+                Confidence: <strong id="analysis-confidence-val">91%</strong>
+              </span>
+            </div>
+
+            <div class="kicker" style="margin-top:16px;">AI Summary</div>
+            <p id="analysis-summary-text" style="margin-top:8px; font-size:18px; line-height:1.5; color:#1e293b;">
+              Loading analysis summary...
+            </p>
+          </div>
+
+          <div class="card" id="analysis-observations-card">
+            <div class="kicker">What AI detected</div>
+            <ul id="analysis-observations-list" style="margin:12px 0 0 20px; line-height:1.6; font-size:15px; color:#334155;">
+            </ul>
+          </div>
+
+          <div class="card">
+            <div class="kicker">Recommended action</div>
+            <h3 id="analysis-recommended-action" style="margin:6px 0; font-size:20px;">Field inspection and road repair</h3>
+            <p class="muted" style="margin-bottom:0;">This is an AI assessment. Municipal routing and inspection are determined by configured municipal standards.</p>
+          </div>
+        </div>
+
+        <!-- Multi-Issue View (Shown when multiple related issues are detected) -->
+        <div id="multi-issue-view" class="stack hidden" style="gap:16px;">
+          <div class="result-hero">
+            <div class="ai-label">MULTI-ISSUE DETECTION</div>
+            <h2 style="font-size:26px;margin:16px 0 6px;">AI DETECTED MULTIPLE RELATED ISSUES</h2>
+            <p id="multi-analysis-summary" class="muted" style="font-size:15px;line-height:1.5;margin-bottom:12px;"></p>
+            <div style="display:flex; gap:10px; justify-content:center; flex-wrap:wrap; margin-bottom:4px;">
+              <span class="status active" style="font-size:14px; padding:5px 14px;">
+                Overall Severity: <strong id="multi-overall-severity">High</strong>
+              </span>
+              <span class="status" style="font-size:14px; padding:5px 14px; background:var(--blue-light); color:var(--blue); border:1px solid var(--blue);">
+                Issues Detected: <strong id="multi-issue-count">2</strong>
+              </span>
+            </div>
+          </div>
+
+          <!-- List of Detected Issue Components -->
+          <div id="multi-components-container" class="stack" style="gap:12px;"></div>
+
+          <!-- Municipal Routing Section -->
+          <div class="card" style="border:1.5px solid var(--blue-mid);">
+            <div class="row between" style="margin-bottom:8px;">
+              <div class="kicker" style="color:var(--blue);font-weight:800;">MUNICIPAL ROUTING</div>
+              <span id="multi-dept-badge" class="demo-label" style="font-size:11px;padding:3px 8px;">Multi-Department</span>
+            </div>
+            <h3 id="multi-routing-header" style="font-size:22px;margin:4px 0 16px;">2 departments may be involved</h3>
+
+            <div class="grid grid-2" style="gap:14px;">
+              <div style="background:#f8fafc;padding:14px;border-radius:10px;border-left:4px solid var(--blue);">
+                <div class="kicker" style="font-size:11px;">Primary Department</div>
+                <h4 id="multi-primary-dept" style="margin:4px 0 2px;font-size:18px;color:var(--blue);">Water Supply & Drainage</h4>
+                <p id="multi-primary-role" class="muted" style="margin-bottom:0;font-size:12px;">Lead agency · Responsible for suspected root cause</p>
+              </div>
+              <div style="background:#f8fafc;padding:14px;border-radius:10px;border-left:4px solid #0f766e;">
+                <div class="kicker" style="font-size:11px;color:#0f766e;">Supporting Department</div>
+                <h4 id="multi-supporting-depts" style="margin:4px 0 2px;font-size:18px;color:#0f766e;">City Engineer / PWD</h4>
+                <p id="multi-supporting-role" class="muted" style="margin-bottom:0;font-size:12px;">Secondary impact & infrastructure restoration</p>
+              </div>
+            </div>
+
+            <!-- Coordinated Work Order / Workflow Note -->
+            <div id="multi-workflow-note" style="margin-top:14px;padding:12px 14px;background:#f0fdf4;border-radius:8px;border:1px solid #bbf7d0;color:#166534;font-size:13px;line-height:1.5;">
+              <strong>Coordinated Workflow:</strong> CivicFix links these departments under one Master Incident. Road restoration is automatically sequenced with pipeline inspection.
+            </div>
+
+            <div class="divider" style="margin:14px 0;"></div>
+
+            <p id="multi-explanation-text" class="muted" style="margin-bottom:0;font-size:14px;line-height:1.5;">
+              The image appears to show multiple related civic issues. CivicFix can route the suspected underlying infrastructure issue and the resulting road damage to the relevant municipal teams.
+            </p>
+          </div>
+        </div>
+
+        <a href="location.html" class="primary-btn" style="width:100%; margin-top:8px; text-align:center;">
+          CONTINUE ➔
+        </a>
+      </div>
+
+      <div style="text-align:center;margin-top:28px;">
+        <span class="demo-label">AI CivicFix — Hackathon Prototype</span>
+      </div>
+    </div>
+  </main>
+
+  <div id="nav-mount"></div>
+
+  <script src="../js/mock-data.js"></script>
+  <script src="../js/state.js"></script>
+  <script type="module" src="../js/auth.js"></script>
+  <script type="module">
+    import { analyzeCivicImage } from "../js/ai-service.js";
+    window.analyzeCivicImage = analyzeCivicImage;
+  </script>
+  <script src="../js/services.js"></script>
+  <script src="../js/routing.js"></script>
+  <script src="../js/citizen.js"></script>
+  <script src="../js/app.js"></script>
+  <script>
+    document.getElementById("header-mount").innerHTML = renderGlobalHeader({ role: "citizen" });
+    document.getElementById("nav-mount").innerHTML = renderCitizenNav("report");
+    CitizenApp.initAnalysis();
+  </script>
+</body>
+</html>

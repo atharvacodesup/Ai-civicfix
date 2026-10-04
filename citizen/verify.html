@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Resolution Verification — AI CivicFix</title>
+  <link rel="stylesheet" href="../css/style.css">
+  <link rel="stylesheet" href="../css/citizen.css">
+</head>
+<body class="citizen-page">
+  <div id="header-mount"></div>
+
+  <main class="citizen-content">
+    <div class="narrow">
+      <div class="kicker">Final citizen check</div>
+      <h1 style="font-size:34px;margin:6px 0 16px;">PROBLEM REPORTED AS FIXED</h1>
+
+      <div class="grid grid-2">
+        <div class="card" style="padding:16px;">
+          <div class="kicker" style="margin-bottom:8px;">Before Repair</div>
+          <img src="../assets/before-pothole.svg" alt="Before repair evidence" style="border:1px solid var(--blue-mid);border-radius:12px;width:100%;">
+        </div>
+        <div class="card" style="padding:16px;">
+          <div class="kicker" style="margin-bottom:8px;">After Repair</div>
+          <img src="../assets/after-repaired.svg" alt="After repair evidence" style="border:1px solid var(--blue-mid);border-radius:12px;width:100%;">
+        </div>
+      </div>
+
+      <div class="card" style="margin-top:20px;">
+        <div class="grid grid-2">
+          <div>
+            <div class="kicker">Location</div>
+            <strong style="font-size:18px;">Prathamesh Nagar, Salokhe Nagar, Kalamba</strong>
+            <p class="muted" style="margin:2px 0 0;">Ward 20 · Kolhapur</p>
+          </div>
+          <div>
+            <div class="kicker">Repair Time</div>
+            <strong style="font-size:18px;">Today, 11:45 AM</strong>
+            <p class="muted" style="margin:2px 0 0;">GPS Verified: Matched</p>
+          </div>
+        </div>
+      </div>
+
+      <div class="card" style="margin-top:20px;">
+        <div class="ai-label">AI-assisted verification</div>
+        <div class="list" style="margin-top:16px;">
+          <div class="list-item"><strong>Issue area:</strong> Appears repaired</div>
+          <div class="list-item"><strong>Location:</strong> Matched</div>
+          <div class="list-item"><strong>Evidence:</strong> Complete</div>
+          <div class="list-item"><strong>Status:</strong> READY FOR CITIZEN CONFIRMATION</div>
+        </div>
+      </div>
+
+      <!-- Action Box -->
+      <div id="verify-actions-box" class="card" style="margin-top:20px;">
+        <h2 style="font-size:26px;margin-bottom:12px;">WAS THE PROBLEM FIXED?</h2>
+        <div class="grid grid-2">
+          <button id="verify-yes-btn" type="button" class="primary-btn">
+            YES, FIXED ✓
+          </button>
+          <button id="verify-no-btn" type="button" class="secondary-btn">
+            NO, STILL A PROBLEM
+          </button>
+        </div>
+      </div>
+
+      <!-- State: Closed -->
+      <div id="verify-closed-box" class="result-hero hidden" style="margin-top:20px;">
+        <div style="font-size:52px;font-weight:950;color:var(--blue);">✓</div>
+        <h2 style="font-size:30px;margin:8px 0 10px;">MASTER INCIDENT CLOSED</h2>
+        <p style="font-size:18px;margin-bottom:20px;">Thank you for confirming the municipal repair for <span id="verify-closed-id">the reported issue</span>.</p>
+        <a href="home.html" class="primary-btn" style="width:100%;">
+          BACK HOME
+        </a>
+      </div>
+
+      <!-- State: Reopened -->
+      <div id="verify-reopened-box" class="result-hero hidden" style="margin-top:20px;">
+        <div class="ai-label">REOPENED</div>
+        <h2 style="font-size:30px;margin:14px 0 10px;">MASTER INCIDENT REOPENED</h2>
+        <p style="font-size:18px;margin-bottom:20px;">Your report remains linked to <span id="verify-reopened-id">the reported issue</span> for field inspection and rework.</p>
+        <a href="track.html" class="secondary-btn" style="width:100%;">
+          TRACK AGAIN
+        </a>
+      </div>
+
+      <div style="text-align:center;margin-top:28px;">
+        <span class="demo-label">AI CivicFix — Hackathon Prototype</span>
+      </div>
+    </div>
+  </main>
+
+  <div id="nav-mount"></div>
+
+  <script src="../js/mock-data.js"></script>
+  <script src="../js/state.js"></script>
+  <script type="module" src="../js/auth.js"></script>
+  <script src="../js/services.js"></script>
+  <script src="../js/citizen.js"></script>
+  <script src="../js/app.js"></script>
+  <script>
+    document.getElementById("header-mount").innerHTML = renderGlobalHeader({ role: "citizen" });
+    document.getElementById("nav-mount").innerHTML = renderCitizenNav("reports");
+    CitizenApp.initVerify();
+  </script>
+</body>
+</html>

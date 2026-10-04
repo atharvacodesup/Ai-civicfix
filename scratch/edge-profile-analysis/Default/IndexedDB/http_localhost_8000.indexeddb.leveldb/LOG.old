@@ -1,0 +1,13 @@
+2026/10/04-00:51:22.445 5b44 Reusing MANIFEST C:\Users\Atharv Naik\Desktop\AI-CivicFix-Manual-UI\scratch\edge-profile-analysis\Default\IndexedDB\http_localhost_8000.indexeddb.leveldb/MANIFEST-000001
+2026/10/04-00:51:22.445 5b44 Recovering log #7
+2026/10/04-00:51:22.446 5b44 Reusing old log C:\Users\Atharv Naik\Desktop\AI-CivicFix-Manual-UI\scratch\edge-profile-analysis\Default\IndexedDB\http_localhost_8000.indexeddb.leveldb/000007.log 
+2026/10/04-00:51:22.487 55a0 Level-0 table #11: started
+2026/10/04-00:51:22.490 55a0 Level-0 table #11: 927 bytes OK
+2026/10/04-00:51:22.492 55a0 Delete type=0 #7
+2026/10/04-00:51:22.492 55a0 Manual compaction at level-0 from '\x00\x06\x00\x00\x00' @ 72057594037927935 : 1 .. '\x00\x07\x00\x00\x00' @ 0 : 0; will stop at '\x00\x06\x00\x00\x05' @ 229 : 1
+2026/10/04-00:51:22.492 55a0 Compacting 1@0 + 1@1 files
+2026/10/04-00:51:22.494 55a0 Generated table #12@0: 60 keys, 1487 bytes
+2026/10/04-00:51:22.494 55a0 Compacted 1@0 + 1@1 files => 1487 bytes
+2026/10/04-00:51:22.495 55a0 compacted to: files[ 0 1 1 0 0 0 0 ]
+2026/10/04-00:51:22.496 55a0 Delete type=2 #11
+2026/10/04-00:51:22.496 55a0 Manual compaction at level-0 from '\x00\x06\x00\x00\x05' @ 229 : 1 .. '\x00\x07\x00\x00\x00' @ 0 : 0; will stop at (end)

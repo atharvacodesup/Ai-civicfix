@@ -1,0 +1,219 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Report a Civic Problem — AI CivicFix</title>
+  <link rel="stylesheet" href="../css/style.css">
+  <link rel="stylesheet" href="../css/citizen.css">
+</head>
+<body class="citizen-page">
+
+  <!-- TOP HEADER (Identical to home.html: Navigation Exists Only Once) -->
+  <header class="citizen-header">
+    <div class="citizen-container">
+      <div class="header-inner">
+        <!-- Left: Brand Identity -->
+        <a href="home.html" class="brand" aria-label="AI CivicFix Home">
+          <div class="brand-mark" aria-hidden="true">CF</div>
+          <div class="brand-text">
+            <span class="brand-title">AI CivicFix</span>
+            <span class="brand-sub">KMC Civic Services</span>
+          </div>
+        </a>
+
+        <!-- Center: Primary Desktop Navigation Bar -->
+        <nav class="desktop-nav" aria-label="Primary Navigation">
+          <a href="home.html" class="desktop-nav-link">Home</a>
+          <a href="report.html" class="desktop-nav-link active" aria-current="page">Report Problem</a>
+          <a href="reports.html" class="desktop-nav-link">My Reports</a>
+        </nav>
+
+        <!-- Right: Authenticated Citizen Profile -->
+        <div class="citizen-header-right">
+          <div class="citizen-profile-chip" id="citizen-profile-chip">
+            <div class="citizen-avatar" id="citizen-header-avatar" aria-hidden="true">C</div>
+            <div class="citizen-profile-info">
+              <span class="citizen-name" id="citizen-header-name">Citizen</span>
+              <span class="citizen-role-badge">CITIZEN</span>
+            </div>
+          </div>
+          <button class="ghost-btn citizen-logout-btn" data-action="logout" type="button" aria-label="Sign out">
+            <span>Logout</span>
+          </button>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <!-- MAIN REPORT WORKSPACE -->
+  <main class="citizen-main-content">
+    <div class="citizen-container">
+
+      <!-- STEP INDICATOR -->
+      <div class="report-stepper-wrap">
+        <nav class="report-stepper" aria-label="Reporting progress">
+          <div class="stepper-step active" aria-current="step">
+            <span class="stepper-badge">01</span>
+            <span class="stepper-label">Report</span>
+          </div>
+          <span class="stepper-arrow" aria-hidden="true">➔</span>
+          <div class="stepper-step">
+            <span class="stepper-badge">02</span>
+            <span class="stepper-label">AI Analysis</span>
+          </div>
+          <span class="stepper-arrow" aria-hidden="true">➔</span>
+          <div class="stepper-step">
+            <span class="stepper-badge">03</span>
+            <span class="stepper-label">Location</span>
+          </div>
+          <span class="stepper-arrow" aria-hidden="true">➔</span>
+          <div class="stepper-step">
+            <span class="stepper-badge">04</span>
+            <span class="stepper-label">Review</span>
+          </div>
+        </nav>
+      </div>
+
+      <!-- PAGE HEADER -->
+      <div class="report-page-header">
+        <div class="citizen-eyebrow">MUNICIPAL INTAKE</div>
+        <h1 class="report-page-title">REPORT A CIVIC PROBLEM</h1>
+        <p class="report-page-subtitle">
+          Upload a photo and provide a few details. CivicFix will analyze your report and guide it to the appropriate municipal service.
+        </p>
+      </div>
+
+      <!-- MAIN REPORT FORM WORKSPACE: TWO-COLUMN DESKTOP GRID -->
+      <form class="report-workspace-card" id="report-form" onsubmit="return false;" novalidate>
+        <div class="report-grid-two-column">
+
+          <!-- LEFT COLUMN: PHOTO UPLOAD -->
+          <div class="report-column left-upload-col">
+            <div class="column-header">
+              <span class="col-indicator-num" aria-hidden="true">1</span>
+              <div>
+                <h2 class="column-title">Upload a Photo</h2>
+                <p class="column-subtitle">Take a clear photo of the civic problem.</p>
+              </div>
+            </div>
+
+            <!-- Upload Drop Area (Interactive Label for #photo-input) -->
+            <label id="empty-upload-zone" class="upload-dropzone" for="photo-input" tabindex="0" role="button" aria-label="Upload civic problem photo">
+              <div class="dropzone-content">
+                <div class="dropzone-icon-circle" aria-hidden="true">📷</div>
+                <div class="dropzone-callout">
+                  <span class="dropzone-btn-fake">Upload Photo</span>
+                  <span class="dropzone-alt-text">or drag and drop image here</span>
+                </div>
+                <div class="dropzone-meta">
+                  <span class="meta-tag">JPG, PNG, WEBP</span>
+                  <span class="meta-separator">·</span>
+                  <span class="meta-tag">Maximum 5 MB</span>
+                </div>
+              </div>
+            </label>
+
+            <!-- Preview Zone (Revealed when file is selected) -->
+            <div id="photo-preview-wrap" class="preview-panel hidden">
+              <div class="preview-media-frame">
+                <img id="preview-img" src="" alt="Selected civic problem preview" class="preview-media-img">
+              </div>
+              <div class="preview-control-bar">
+                <span class="preview-status-pill">✓ Photo Attached</span>
+                <button type="button" class="ghost-btn replace-photo-btn" onclick="CitizenApp.removePhoto()">
+                  <span>✕ Replace / Remove</span>
+                </button>
+              </div>
+            </div>
+
+            <!-- Hidden File Input (Required by JS) -->
+            <input id="photo-input" class="hidden" type="file" accept="image/jpeg,image/png,image/webp" capture="environment">
+
+            <!-- Upload Error Notification -->
+            <div id="upload-error" class="upload-error-box hidden" role="alert"></div>
+
+            <div class="photo-guidance-note">
+              <span class="note-bullet" aria-hidden="true">💡</span>
+              <span>For best results, include surrounding landmarks or street perspective in your photo.</span>
+            </div>
+          </div>
+
+          <!-- RIGHT COLUMN: REPORT DETAILS -->
+          <div class="report-column right-details-col">
+            <div class="column-header">
+              <span class="col-indicator-num" aria-hidden="true">2</span>
+              <div>
+                <h2 class="column-title">Tell Us About the Problem</h2>
+                <p class="column-subtitle">Add context to help our municipal officers understand the situation.</p>
+              </div>
+            </div>
+
+            <div class="form-field-group">
+              <label class="form-label" for="citizen-description">
+                <span>Describe the problem</span>
+                <span class="label-optional">(optional)</span>
+              </label>
+              <textarea id="citizen-description" class="form-textarea" placeholder="Example: Large pothole near the main road causing traffic disruption and safety risk..."></textarea>
+              <span class="field-hint">CivicFix AI will automatically classify the severity, department, and category.</span>
+            </div>
+
+            <div class="details-tips-card">
+              <h4 class="tips-heading">Helpful details to mention:</h4>
+              <ul class="tips-list">
+                <li>Specific location landmarks or cross-streets</li>
+                <li>How long the issue has persisted</li>
+                <li>Any immediate hazard to pedestrians or traffic</li>
+              </ul>
+            </div>
+          </div>
+
+        </div>
+
+        <!-- BOTTOM ACTION FOOTER -->
+        <div class="report-workspace-footer">
+          <div class="footer-security-note">
+            <span class="security-icon" aria-hidden="true">🔒</span>
+            <span>Your photo will be securely processed for municipal analysis.</span>
+          </div>
+          <button id="continue-btn" type="button" class="primary-btn continue-submit-btn" disabled>
+            <span>Continue</span>
+            <span class="btn-arrow" aria-hidden="true">➔</span>
+          </button>
+        </div>
+      </form>
+
+      <!-- Minimal Prototype Footer -->
+      <footer class="citizen-page-footer">
+        <div class="footer-top-brand">
+          <span class="footer-brand-title">AI CivicFix</span>
+          <span class="footer-divider" aria-hidden="true">·</span>
+          <span class="footer-brand-dept">KMC Civic Services</span>
+        </div>
+        <div class="footer-badge-wrap">
+          <span class="demo-label">AI CivicFix — Hackathon Prototype</span>
+        </div>
+      </footer>
+
+    </div>
+  </main>
+
+  <!-- Mobile Bottom Navigation (Hidden on Desktop) -->
+  <div id="nav-mount"></div>
+
+  <script src="../js/mock-data.js"></script>
+  <script src="../js/state.js"></script>
+  <script type="module" src="../js/auth.js"></script>
+  <script type="module" src="../js/cloudinary.js"></script>
+  <script src="../js/services.js"></script>
+  <script src="../js/citizen.js"></script>
+  <script src="../js/app.js"></script>
+  <script>
+    document.getElementById("nav-mount").innerHTML = renderCitizenNav("report");
+    CitizenApp.initReport();
+    if (typeof CitizenApp.initHeaderProfile === "function") {
+      CitizenApp.initHeaderProfile();
+    }
+  </script>
+</body>
+</html>

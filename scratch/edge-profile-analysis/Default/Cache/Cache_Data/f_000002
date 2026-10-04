@@ -1,0 +1,1224 @@
+// =========================================================
+// AI CivicFix — Citizen Application Logic
+// Handles photo upload, AI demo, location, duplicate check,
+// confirmation, submission, tracking, and verification.
+// =========================================================
+
+window.CitizenApp = {
+  initHeaderProfile() {
+    const update = () => {
+      const user = (window.Auth && window.Auth.getCurrentUser()) || window.AppState?.currentUser;
+      const nameEl = document.getElementById("citizen-header-name");
+      const avatarEl = document.getElementById("citizen-header-avatar");
+      let displayName = user?.name || user?.displayName || "";
+      if (displayName) {
+        if (nameEl) nameEl.textContent = displayName;
+        if (avatarEl) avatarEl.textContent = displayName.trim().charAt(0).toUpperCase();
+      } else {
+        if (nameEl) nameEl.textContent = "Citizen";
+        if (avatarEl) avatarEl.textContent = "C";
+      }
+    };
+    update();
+    if (window.Auth?.onAuthStateChanged && !this._authBound) {
+      this._authBound = true;
+      window.Auth.onAuthStateChanged(update);
+    }
+  },
+
+  // 1. Home
+  async initHome() {
+    this.initHeaderProfile();
+    // 1. Authenticated User Profile & Greeting
+    const user = (window.Auth && window.Auth.getCurrentUser()) || window.AppState?.currentUser;
+    const nameEl = document.getElementById("citizen-header-name");
+    const avatarEl = document.getElementById("citizen-header-avatar");
+    const heroHeading = document.getElementById("citizen-hero-heading");
+
+    let displayName = user?.name || user?.displayName || "";
+    if (displayName) {
+      if (nameEl) nameEl.textContent = displayName;
+      if (avatarEl) avatarEl.textContent = displayName.trim().charAt(0).toUpperCase();
+      const firstName = displayName.trim().split(/\s+/)[0];
+      if (heroHeading) {
+        heroHeading.textContent = `Report a Civic Problem, ${firstName}`;
+      }
+    } else {
+      if (nameEl) nameEl.textContent = "Citizen";
+      if (avatarEl) avatarEl.textContent = "C";
+      if (heroHeading) heroHeading.textContent = "Report a Civic Problem";
+    }
+
+    // 2. Fetch real Firestore reports
+    const container = document.getElementById("citizen-recent-reports-container") || document.getElementById("citizen-recent-reports");
+    const activeCountEl = document.getElementById("summary-active-count");
+    const resolvedCountEl = document.getElementById("summary-resolved-count");
+    const totalCountEl = document.getElementById("summary-total-count");
+    const quickTrackLink = document.getElementById("quick-track-link");
+
+    if (!container) return;
+
+    try {
+      let service = window.ReportsService;
+      if (!service) {
+        try {
+          service = await import("../js/reports.js");
+        } catch (e) {
+          service = await import("/js/reports.js");
+        }
+      }
+
+      const authUser = await (service?.getAuthenticatedUser ? service.getAuthenticatedUser() : window.getCurrentFirebaseUser?.());
+      const uid = authUser?.uid || user?.uid;
+
+      if (!uid) {
+        if (activeCountEl) activeCountEl.textContent = "0";
+        if (resolvedCountEl) resolvedCountEl.textContent = "0";
+        if (totalCountEl) totalCountEl.textContent = "0";
+        container.innerHTML = `
+          <div class="empty-reports-panel">
+            <div class="empty-reports-badge" aria-hidden="true">📋</div>
+            <h3 class="empty-reports-heading">No reports yet</h3>
+            <p class="empty-reports-message">Your submitted civic problems will appear here once you file a report.</p>
+          </div>
+        `;
+        return;
+      }
+
+      const reports = await service.getCitizenReports(uid);
+
+      if (!reports || reports.length === 0) {
+        if (activeCountEl) activeCountEl.textContent = "0";
+        if (resolvedCountEl) resolvedCountEl.textContent = "0";
+        if (totalCountEl) totalCountEl.textContent = "0";
+        container.innerHTML = `
+          <div class="empty-reports-panel">
+            <div class="empty-reports-badge" aria-hidden="true">📋</div>
+            <h3 class="empty-reports-heading">No reports yet</h3>
+            <p class="empty-reports-message">Your submitted civic problems will appear here once you file a report.</p>
+          </div>
+        `;
+        return;
+      }
+
+      // Compute active, resolved & total counts
+      const activeCount = reports.filter(r => {
+        const s = (r.status || "").toUpperCase();
+        return s !== "RESOLVED" && s !== "CLOSED";
+      }).length;
+      const resolvedCount = reports.filter(r => {
+        const s = (r.status || "").toUpperCase();
+        return s === "RESOLVED" || s === "CLOSED";
+      }).length;
+      const totalCount = reports.length;
+
+      if (activeCountEl) activeCountEl.textContent = activeCount;
+      if (resolvedCountEl) resolvedCountEl.textContent = resolvedCount;
+      if (totalCountEl) totalCountEl.textContent = totalCount;
+
+      if (quickTrackLink && reports[0] && reports[0].id) {
+        quickTrackLink.href = `track.html?id=${encodeURIComponent(reports[0].id)}`;
+      }
+
+      // Display up to 3 most recent reports across desktop grid
+      const recentReports = reports.slice(0, 3);
+      container.innerHTML = recentReports.map((rep) => {
+        const displayId = "CF-" + (rep.id || "").slice(0, 8).toUpperCase();
+        const categoryText = rep.category ? rep.category : "Pending analysis";
+        const locationText = rep.locationText || "Location pending";
+        const rawStatus = (rep.status || "SUBMITTED").toUpperCase();
+
+        let statusLabel = "○ Submitted";
+        let statusClass = "submitted";
+        if (rawStatus === "RESOLVED" || rawStatus === "CLOSED") {
+          statusLabel = "✓ Resolved";
+          statusClass = "resolved";
+        } else if (rawStatus === "IN PROGRESS" || rawStatus === "IN_PROGRESS" || rawStatus === "ROUTED" || rawStatus === "ASSIGNED") {
+          statusLabel = "● In Progress";
+          statusClass = "in-progress";
+        } else if (rawStatus !== "SUBMITTED") {
+          statusLabel = `○ ${rep.status}`;
+        }
+
+        const dateStr = service?.formatReportDate ? service.formatReportDate(rep.createdAt || rep.rawCreatedAt) : "";
+
+        return `
+          <a href="track.html?id=${encodeURIComponent(rep.id)}" class="report-card-item">
+            <div class="report-card-media">
+              ${rep.imageUrl ? `
+                <img src="${window.esc(rep.imageUrl)}" alt="${window.esc(categoryText)}" class="report-thumb-img" loading="lazy">
+              ` : `
+                <div class="report-thumb-empty" aria-hidden="true">📷</div>
+              `}
+              <span class="report-card-status-pill status-${statusClass}">${statusLabel}</span>
+            </div>
+            <div class="report-card-content">
+              <div class="report-card-top-info">
+                <h4 class="report-card-category">${window.esc(categoryText)}</h4>
+                <div class="report-card-location">${window.esc(locationText)}</div>
+              </div>
+              <div class="report-card-footer">
+                <div class="report-card-meta">
+                  <span class="report-card-id">${window.esc(displayId)}</span>
+                  ${dateStr ? `<span class="report-card-date">· ${window.esc(dateStr)}</span>` : ""}
+                </div>
+                <span class="report-card-action">VIEW REPORT ➔</span>
+              </div>
+            </div>
+          </a>
+        `;
+      }).join("");
+
+    } catch (err) {
+      console.error("Error loading citizen dashboard reports:", err);
+      if (activeCountEl) activeCountEl.textContent = "0";
+      if (resolvedCountEl) resolvedCountEl.textContent = "0";
+      if (totalCountEl) totalCountEl.textContent = "0";
+      container.innerHTML = `
+        <div class="empty-reports-panel">
+          <div class="empty-reports-badge" aria-hidden="true">📋</div>
+          <h3 class="empty-reports-heading">No reports yet</h3>
+          <p class="empty-reports-message">Your submitted civic problems will appear here once you file a report.</p>
+        </div>
+      `;
+    }
+  },
+
+  // 2. Report & Photo Upload
+  initReport() {
+    this.initHeaderProfile();
+    const input = document.getElementById("photo-input");
+    const preview = document.getElementById("photo-preview-wrap");
+    const emptyZone = document.getElementById("empty-upload-zone");
+    const continueBtn = document.getElementById("continue-btn");
+    const descInput = document.getElementById("citizen-description");
+    const errorEl = document.getElementById("upload-error");
+
+    const showError = (msg) => {
+      if (errorEl) {
+        errorEl.textContent = msg;
+        errorEl.classList.remove("hidden");
+      } else {
+        alert(msg);
+      }
+    };
+
+    const clearError = () => {
+      if (errorEl) {
+        errorEl.textContent = "";
+        errorEl.classList.add("hidden");
+      }
+    };
+
+    if (window.AppState.imageUrl || window.AppState.selectedImage) {
+      this.showImagePreview(window.AppState.imageUrl || window.AppState.selectedImage);
+    }
+
+    let activeUploadPromise = null;
+
+    const performUpload = async (file) => {
+      if (!file) return null;
+
+      // During upload: disable the relevant action/button and show a simple "Uploading..." state.
+      if (continueBtn) {
+        continueBtn.disabled = true;
+        continueBtn.textContent = "Uploading...";
+      }
+
+      try {
+        let uploadFn = window.uploadImageToCloudinary;
+        if (!uploadFn && typeof window.CivicService?.uploadImage === "function") {
+          uploadFn = window.CivicService.uploadImage;
+        }
+
+        if (!uploadFn) {
+          try {
+            const mod = await import("../js/cloudinary.js");
+            uploadFn = mod.uploadImageToCloudinary || window.uploadImageToCloudinary;
+          } catch (e) {
+            try {
+              const mod2 = await import("/js/cloudinary.js");
+              uploadFn = mod2.uploadImageToCloudinary || window.uploadImageToCloudinary;
+            } catch (e2) {
+              console.error("Could not load cloudinary module:", e2);
+            }
+          }
+        }
+
+        if (!uploadFn) {
+          throw new Error("Cloudinary upload service not available.");
+        }
+
+        const result = await uploadFn(file);
+
+        const secureUrl = typeof result === "string" ? result : (result?.imageUrl || result?.secure_url);
+        const publicId = (typeof result === "object" && result) ? (result.publicId || result.public_id || null) : null;
+
+        if (!secureUrl) {
+          throw new Error("No secure URL received from upload.");
+        }
+
+        // Store them in the existing application state.
+        // For example: imageUrl, cloudinaryPublicId
+        window.AppState.imageUrl = secureUrl;
+        window.AppState.cloudinaryPublicId = publicId;
+        window.AppState.selectedImage = secureUrl;
+        window.AppState.selectedFile = null;
+        window.saveState();
+
+        // If upload succeeds: keep the image preview
+        this.showImagePreview(secureUrl);
+
+        if (continueBtn) {
+          continueBtn.disabled = false;
+          continueBtn.textContent = "CONTINUE ➔";
+        }
+
+        return { secureUrl, publicId };
+      } catch (err) {
+        console.error("Cloudinary upload failed:", err);
+        if (continueBtn) {
+          continueBtn.disabled = false;
+          continueBtn.textContent = "CONTINUE ➔";
+        }
+        // If upload fails: show: "Image upload failed. Please try again."
+        showError("Image upload failed. Please try again.");
+        return null;
+      }
+    };
+
+    if (input) {
+      input.addEventListener("change", (e) => {
+        clearError();
+        const file = e.target.files[0];
+        if (!file) return;
+
+        // VALIDATION:
+        // - JPG
+        // - JPEG
+        // - PNG
+        // - WEBP
+        // - Maximum 5 MB
+        const fileName = file.name || "";
+        const fileExt = fileName.slice(((fileName.lastIndexOf(".") - 1) >>> 0) + 2).toLowerCase();
+        const allowedExtensions = ["jpg", "jpeg", "png", "webp"];
+        const allowedMimeTypes = ["image/jpeg", "image/png", "image/webp"];
+
+        if (!allowedMimeTypes.includes(file.type) && !allowedExtensions.includes(fileExt)) {
+          showError("Please select a JPG, PNG, or WEBP image.");
+          input.value = "";
+          return;
+        }
+
+        const maxSize = 5 * 1024 * 1024;
+        if (file.size > maxSize) {
+          showError("Image must be smaller than 5 MB.");
+          input.value = "";
+          return;
+        }
+
+        // Keep the selected File object in existing state
+        window.AppState.selectedFile = file;
+
+        // Existing image preview appears
+        const reader = new FileReader();
+        reader.onload = (event) => {
+          const localPreview = event.target.result;
+          window.AppState.selectedImage = localPreview;
+          try {
+            sessionStorage.setItem("civicfix_analysis_image", localPreview);
+          } catch (e) {
+            console.warn("Could not save to sessionStorage:", e);
+          }
+          this.showImagePreview(localPreview);
+
+          // Trigger upload to Cloudinary
+          activeUploadPromise = performUpload(file).finally(() => {
+            activeUploadPromise = null;
+          });
+        };
+        reader.onerror = () => {
+          const localBlobUrl = URL.createObjectURL(file);
+          window.AppState.selectedImage = localBlobUrl;
+          this.showImagePreview(localBlobUrl);
+
+          // Trigger upload to Cloudinary
+          activeUploadPromise = performUpload(file).finally(() => {
+            activeUploadPromise = null;
+          });
+        };
+        reader.readAsDataURL(file);
+      });
+    }
+
+    if (continueBtn) {
+      continueBtn.addEventListener("click", async () => {
+        clearError();
+
+        // If upload is currently in flight, wait for it
+        if (activeUploadPromise) {
+          continueBtn.disabled = true;
+          continueBtn.textContent = "Uploading...";
+          const res = await activeUploadPromise;
+          if (!res || !window.AppState.imageUrl) {
+            return;
+          }
+        } else if (window.AppState.selectedFile && !window.AppState.imageUrl) {
+          // Retry or perform upload if not done yet
+          activeUploadPromise = performUpload(window.AppState.selectedFile).finally(() => {
+            activeUploadPromise = null;
+          });
+          const res = await activeUploadPromise;
+          if (!res || !window.AppState.imageUrl) {
+            return;
+          }
+        }
+
+        if (!window.AppState.imageUrl && !window.AppState.selectedImage) {
+          showError("Please select a photo to continue.");
+          return;
+        }
+
+        if (descInput) {
+          window.AppState.customDescription = descInput.value.trim();
+          try {
+            sessionStorage.setItem("civicfix_analysis_desc", descInput.value.trim());
+          } catch (e) {}
+          window.saveState();
+        }
+
+        window.location.href = "analysis.html";
+      });
+    }
+  },
+
+  showImagePreview(url) {
+    const preview = document.getElementById("photo-preview-wrap");
+    const emptyZone = document.getElementById("empty-upload-zone");
+    const imgEl = document.getElementById("preview-img");
+    const continueBtn = document.getElementById("continue-btn");
+
+    if (emptyZone) emptyZone.classList.add("hidden");
+    if (preview) preview.classList.remove("hidden");
+    
+    const cleanUrl = (typeof url === "object" && url) ? (url.imageUrl || url.secure_url || "") : url;
+    if (imgEl && cleanUrl) imgEl.src = cleanUrl;
+    if (continueBtn && continueBtn.textContent !== "Uploading...") {
+      continueBtn.removeAttribute("disabled");
+    }
+  },
+
+  removePhoto() {
+    window.AppState.selectedImage = null;
+    window.AppState.imageUrl = null;
+    window.AppState.cloudinaryPublicId = null;
+    window.AppState.selectedFile = null;
+    try {
+      sessionStorage.removeItem("civicfix_analysis_image");
+      sessionStorage.removeItem("civicfix_analysis_desc");
+    } catch (e) {}
+    window.saveState();
+
+    const preview = document.getElementById("photo-preview-wrap");
+    const emptyZone = document.getElementById("empty-upload-zone");
+    const continueBtn = document.getElementById("continue-btn");
+    const input = document.getElementById("photo-input");
+    const errorEl = document.getElementById("upload-error");
+
+    if (errorEl) {
+      errorEl.textContent = "";
+      errorEl.classList.add("hidden");
+    }
+    if (preview) preview.classList.add("hidden");
+    if (emptyZone) emptyZone.classList.remove("hidden");
+    if (input) input.value = "";
+    if (continueBtn) {
+      continueBtn.textContent = "CONTINUE ➔";
+      continueBtn.setAttribute("disabled", "true");
+    }
+  },
+
+  // 3. AI Analysis
+  async initAnalysis() {
+    let image = null;
+    try {
+      image = sessionStorage.getItem("civicfix_analysis_image");
+    } catch (e) {}
+    if (!image) {
+      image = window.AppState.imageUrl || window.AppState.selectedImage || "../assets/report-01.svg";
+    }
+    if (typeof image === "object" && image) {
+      image = image.imageUrl || image.secure_url || "../assets/report-01.svg";
+    }
+
+    let desc = "";
+    try {
+      desc = sessionStorage.getItem("civicfix_analysis_desc");
+    } catch (e) {}
+    if (!desc) {
+      desc = window.AppState.customDescription || "";
+    }
+
+    const loadingEl = document.getElementById("ai-loading-state");
+    const resultEl = document.getElementById("ai-result-state");
+    const errorEl = document.getElementById("ai-error-state");
+    const errorDetailEl = document.getElementById("ai-error-detail");
+    const retryBtn = document.getElementById("retry-analysis-btn");
+    const analysisImg = document.getElementById("analysis-preview-img");
+
+    if (analysisImg && image) {
+      analysisImg.src = image;
+    }
+
+    const runAnalysis = async () => {
+      // 1. Show loading state, hide result & error
+      if (loadingEl) loadingEl.classList.remove("hidden");
+      if (resultEl) resultEl.classList.add("hidden");
+      if (errorEl) errorEl.classList.add("hidden");
+
+      try {
+        let analyzeFn = window.analyzeCivicImage;
+        if (!analyzeFn) {
+          const mod = await import("../js/ai-service.js");
+          analyzeFn = mod.analyzeCivicImage;
+        }
+        if (!analyzeFn) {
+          throw new Error("Firebase AI Logic service is unavailable.");
+        }
+
+        // Real Gemini image analysis
+        const result = await analyzeFn(image, desc);
+        window.AppState.currentAIResult = result;
+
+        const routeInfo = window.Routing?.resolve ? window.Routing.resolve(result.category) : null;
+        const dept = routeInfo?.department || "City Engineer / PWD";
+
+        window.AppState.currentReport = {
+          problemType: result.category,
+          category: result.category,
+          severity: result.severity,
+          confidence: result.confidence,
+          description: result.summary,
+          summary: result.summary,
+          observations: result.observations,
+          recommendedAction: result.recommendedAction,
+          department: dept,
+          status: "DRAFT",
+          imageUrl: window.AppState.imageUrl || image,
+          location: window.AppState?.currentLocation?.address || (window.AppData?.location?.address || "Kolhapur"),
+          ward: window.AppState?.currentLocation?.ward || (window.AppData?.location?.ward || "20"),
+          jurisdiction: "YES"
+        };
+        window.saveState();
+
+        // Populate DOM elements
+        const typeEl = document.getElementById("analysis-issue-type") || document.querySelector(".result-type");
+        if (typeEl) typeEl.textContent = (result.category || "POTHOLE").toUpperCase();
+
+        const severityValEl = document.getElementById("analysis-severity-val");
+        if (severityValEl) severityValEl.textContent = result.severity || "High";
+
+        const confidenceValEl = document.getElementById("analysis-confidence-val");
+        if (confidenceValEl) confidenceValEl.textContent = (result.confidence || 90) + "%";
+
+        const summaryEl = document.getElementById("analysis-summary-text");
+        if (summaryEl) summaryEl.textContent = result.summary || "";
+
+        const obsListEl = document.getElementById("analysis-observations-list");
+        if (obsListEl) {
+          if (Array.isArray(result.observations) && result.observations.length > 0) {
+            obsListEl.innerHTML = result.observations.map(obs => `<li>${window.esc ? window.esc(obs) : obs}</li>`).join("");
+          } else {
+            obsListEl.innerHTML = `<li>Visual evidence detected in photo</li>`;
+          }
+        }
+
+        const actionEl = document.getElementById("analysis-recommended-action") || document.querySelector("#ai-result-state .card h3");
+        if (actionEl) actionEl.textContent = result.recommendedAction || "Municipal inspection and repair";
+
+        // Show result state, hide loading
+        if (loadingEl) loadingEl.classList.add("hidden");
+        if (resultEl) resultEl.classList.remove("hidden");
+
+      } catch (err) {
+        console.error("AI Analysis Execution Error:", err);
+        if (loadingEl) loadingEl.classList.add("hidden");
+        if (resultEl) resultEl.classList.add("hidden");
+        if (errorEl) {
+          if (errorDetailEl) {
+            errorDetailEl.textContent = err.message || String(err);
+          }
+          errorEl.classList.remove("hidden");
+        }
+      }
+    };
+
+    if (retryBtn) {
+      retryBtn.onclick = () => runAnalysis();
+    }
+
+    await runAnalysis();
+  },
+
+  // 4. Location
+  initLocation() {
+    window.ensureCitizenDemoState();
+    const loc = window.AppState.currentLocation || window.AppData.location;
+
+    this.renderLocationData(loc);
+
+    const useMyLocBtn = document.getElementById("use-my-loc-btn");
+    const useDemoBtn = document.getElementById("use-demo-loc-btn");
+    const continueBtn = document.getElementById("location-continue-btn");
+
+    if (useMyLocBtn) {
+      useMyLocBtn.addEventListener("click", () => {
+        if ("geolocation" in navigator) {
+          navigator.geolocation.getCurrentPosition(
+            (pos) => {
+              // Successfully received GPS internally
+              loc.latitude = pos.coords.latitude;
+              loc.longitude = pos.coords.longitude;
+              loc.source = "phone";
+              window.AppState.currentLocation = loc;
+              window.saveState();
+              this.renderLocationData(loc);
+            },
+            (err) => {
+              // Fallback to demo location seamlessly
+              loc.source = "demo";
+              window.AppState.currentLocation = loc;
+              window.saveState();
+              this.renderLocationData(loc);
+            }
+          );
+        } else {
+          this.renderLocationData(loc);
+        }
+      });
+    }
+
+    if (useDemoBtn) {
+      useDemoBtn.addEventListener("click", () => {
+        window.AppState.currentLocation = JSON.parse(JSON.stringify(window.AppData.location));
+        window.saveState();
+        this.renderLocationData(window.AppState.currentLocation);
+      });
+    }
+
+    if (continueBtn) {
+      continueBtn.addEventListener("click", () => {
+        window.location.href = "duplicate.html";
+      });
+    }
+  },
+
+  renderLocationData(loc) {
+    const addrEl = document.getElementById("loc-address");
+    const wardEl = document.getElementById("loc-ward");
+    const jurEl = document.getElementById("loc-jurisdiction");
+    const divEl = document.getElementById("loc-division");
+
+    if (addrEl) addrEl.textContent = loc.address;
+    if (wardEl) wardEl.textContent = loc.ward;
+    if (jurEl) jurEl.textContent = loc.jurisdiction;
+    if (divEl) divEl.textContent = loc.division;
+  },
+
+  // 5. Similar Incident
+  async initDuplicate() {
+    setTimeout(() => {
+      if (window.CivicMap) {
+        window.CivicMap.init("citizen-mini-map");
+      }
+    }, 100);
+
+    const problemCategory = window.AppState?.currentAIResult?.problemType || window.AppState?.currentReport?.problemType || "Pothole";
+    let similar = null;
+    if (window.CivicService?.findSimilarIncident) {
+      similar = await window.CivicService.findSimilarIncident(problemCategory);
+    }
+    const incidentId = similar?.incidentId || "KMC-042";
+
+    // Update UI elements in duplicate.html
+    const masterIdEl = document.querySelector(".address-card h2");
+    if (masterIdEl) masterIdEl.textContent = incidentId;
+
+    const masterInfoEl = document.querySelector(".address-card p");
+    if (masterInfoEl) {
+      const ward = window.AppState?.currentLocation?.ward || "20";
+      const addr = window.AppState?.currentLocation?.address || "Prathamesh Nagar, Salokhe Nagar";
+      masterInfoEl.textContent = `${problemCategory} · Ward ${ward} · ${addr}`;
+    }
+
+    const distEl = document.querySelector(".grid-2 .metric:nth-child(1) .metric-value");
+    if (distEl && similar?.distance) distEl.textContent = similar.distance;
+
+    const countEl = document.querySelector(".grid-2 .metric:nth-child(2) .metric-value");
+    if (countEl && similar?.reportCount) countEl.textContent = similar.reportCount;
+
+    const addReportBtn = document.getElementById("add-report-btn");
+    if (addReportBtn) {
+      addReportBtn.addEventListener("click", () => {
+        const base = window.AppData?.masterIssues?.find(i => i.id === incidentId);
+        window.AppState.currentMasterIncident = {
+          id: incidentId,
+          problemType: problemCategory,
+          reports: (similar?.reportCount || 6) + 1,
+          status: "Assigned",
+          ...(base || {})
+        };
+
+        if (window.AppState.currentReport) {
+          window.AppState.currentReport.masterIncidentId = incidentId;
+          window.AppState.currentReport.status = "Incident Linked";
+        }
+        window.saveState();
+        window.location.href = "confirm.html";
+      });
+    }
+  },
+
+  // 6. Confirm
+  initConfirm() {
+    const r = window.AppState.currentReport || {};
+    const m = window.AppState.currentMasterIncident;
+
+    const imgEl = document.getElementById("confirm-img");
+    const probEl = document.getElementById("confirm-problem");
+    const sevEl = document.getElementById("confirm-severity");
+    const addrEl = document.getElementById("confirm-address");
+    const wardEl = document.getElementById("confirm-ward");
+    const masterEl = document.getElementById("confirm-master-id");
+    const countEl = document.getElementById("confirm-count");
+
+    let imageSrc = window.AppState.imageUrl || window.AppState.selectedImage || (r && r.imageUrl) || "../assets/report-01.svg";
+    if (typeof imageSrc === "object" && imageSrc) {
+      imageSrc = imageSrc.imageUrl || imageSrc.secure_url || "../assets/report-01.svg";
+    }
+    if (imgEl) imgEl.src = imageSrc;
+    if (probEl) probEl.textContent = window.AppState.currentAIResult?.problemType || r.problemType || "Civic Problem";
+    if (sevEl) sevEl.textContent = window.AppState.currentAIResult?.severity || r.severity || "Reported";
+    if (addrEl) addrEl.textContent = window.AppState.currentLocation?.address || (r.location || "Location recorded");
+    if (wardEl) wardEl.textContent = window.AppState.currentLocation?.ward || (r.ward || "20");
+    if (masterEl) masterEl.textContent = m?.id || (r.masterIncidentId || "None");
+    if (countEl) countEl.textContent = m?.reports ? String(m.reports + 1) : "1";
+
+    const submitBtn = document.getElementById("submit-report-btn");
+    const errorEl = document.getElementById("submit-error");
+
+    const clearError = () => {
+      if (errorEl) {
+        errorEl.textContent = "";
+        errorEl.classList.add("hidden");
+      }
+    };
+
+    const showError = (msg) => {
+      if (errorEl) {
+        errorEl.textContent = msg;
+        errorEl.classList.remove("hidden");
+      } else {
+        alert(msg);
+      }
+    };
+
+    let isSubmitting = false;
+
+    if (submitBtn) {
+      submitBtn.addEventListener("click", async () => {
+        if (isSubmitting) return;
+
+        clearError();
+
+        // 1. Image check
+        const imageUrl = window.AppState?.imageUrl;
+        const cloudinaryPublicId = window.AppState?.cloudinaryPublicId;
+        if (!imageUrl) {
+          showError("Please upload an image before submitting.");
+          return;
+        }
+
+        isSubmitting = true;
+        submitBtn.disabled = true;
+        submitBtn.textContent = "Submitting...";
+
+        try {
+          // Dynamic service resolution
+          let service = window.ReportsService;
+          if (!service) {
+            try {
+              service = await import("../js/reports.js");
+            } catch (e) {
+              service = await import("/js/reports.js");
+            }
+          }
+
+          if (!service || typeof service.createCitizenReport !== "function") {
+            throw new Error("ReportsService is not available.");
+          }
+
+          // 2. Auth check: Fetch authenticated user
+          const user = await service.getAuthenticatedUser();
+          if (!user || !user.uid) {
+            window.location.href = "../login.html";
+            return;
+          }
+
+          const problemCategory = window.AppState?.currentAIResult?.problemType || window.AppState?.currentReport?.problemType || "Pothole";
+          const problemSeverity = window.AppState?.currentAIResult?.severity || window.AppState?.currentReport?.severity || "High";
+          
+          let reportDept = window.AppState?.currentReport?.department;
+          if (!reportDept) {
+            const routing = window.Routing?.resolve ? window.Routing.resolve(problemCategory) : null;
+            reportDept = routing?.department || "City Engineer / PWD";
+          }
+
+          const masterId = window.AppState?.currentMasterIncident?.id || window.AppState?.currentReport?.masterIncidentId || (problemCategory === "Pothole" ? "KMC-042" : null);
+
+          // 3. Exact schema requirement (Section 3):
+          const reportData = {
+            citizenId: user.uid,
+            citizenEmail: user.email || null,
+            imageUrl: imageUrl,
+            cloudinaryPublicId: cloudinaryPublicId || null,
+            description: window.AppState?.customDescription || null,
+            category: problemCategory,
+            severity: problemSeverity,
+            aiConfidence: window.AppState?.currentAIResult?.confidence || 0.94,
+            aiSummary: window.AppState?.currentAIResult?.description || `${problemCategory} identified by AI CivicFix.`,
+            aiObservations: [
+              `${problemCategory} detected on road corridor`,
+              "Visible municipal infrastructure defect requiring maintenance"
+            ],
+            recommendedAction: window.AppState?.currentAIResult?.recommendedAction || "Field inspection and road repair",
+            aiAnalysisStatus: "COMPLETED",
+            latitude: (window.AppState?.currentLocation && typeof window.AppState.currentLocation.latitude === "number")
+              ? window.AppState.currentLocation.latitude
+              : null,
+            longitude: (window.AppState?.currentLocation && typeof window.AppState.currentLocation.longitude === "number")
+              ? window.AppState.currentLocation.longitude
+              : null,
+            locationText: window.AppState?.currentLocation?.address || null,
+            ward: window.AppState?.currentLocation?.ward || null,
+            jurisdiction: window.AppState?.currentLocation?.jurisdiction || "YES",
+            department: reportDept,
+            responsibleUnit: service.getResponsibleUnit ? service.getResponsibleUnit(reportDept) : "Road Maintenance Team",
+            masterIncidentId: masterId,
+            status: "REPORT_SUBMITTED",
+            currentStage: "REPORT_SUBMITTED"
+          };
+
+          const createdReport = await service.createCitizenReport(reportData);
+
+          // Update frontend state with real created report
+          window.AppState.currentReport = createdReport;
+          // Clean up draft input so next report starts clean
+          window.AppState.selectedFile = null;
+          window.AppState.selectedImage = null;
+          window.AppState.imageUrl = null;
+          window.AppState.cloudinaryPublicId = null;
+          window.AppState.customDescription = null;
+          window.saveState();
+
+          // Navigate to success page with real report ID
+          window.location.href = `success.html?id=${encodeURIComponent(createdReport.id)}`;
+        } catch (err) {
+          console.error("Firestore report submission failed:", err);
+          isSubmitting = false;
+          submitBtn.disabled = false;
+          submitBtn.textContent = "SUBMIT REPORT ➔";
+          showError("Unable to submit your report. Please try again.");
+        }
+      });
+    }
+  },
+
+  // 7. Success
+  async initSuccess() {
+    let report = window.AppState?.currentReport;
+    const reportIdEl = document.getElementById("success-report-id");
+    const trackBtn = document.getElementById("success-track-btn");
+    const locEl = document.getElementById("success-location");
+    const statusEl = document.getElementById("success-status");
+
+    const params = new URLSearchParams(window.location.search);
+    const queryId = params.get("id");
+
+    if (queryId && (!report || report.id !== queryId)) {
+      try {
+        let service = window.ReportsService;
+        if (!service) {
+          service = await import("../js/reports.js");
+        }
+        if (service?.getReportById) {
+          const fetched = await service.getReportById(queryId);
+          if (fetched) {
+            report = fetched;
+            window.AppState.currentReport = fetched;
+            window.saveState();
+          }
+        }
+      } catch (e) {
+        console.warn("Could not fetch report in initSuccess:", e);
+      }
+    }
+
+    if (!report && queryId) {
+      report = { id: queryId, displayId: "CF-" + queryId.slice(0, 8).toUpperCase() };
+    }
+
+    if (report && report.id) {
+      const displayId = report.displayId || ("CF-" + report.id.slice(0, 8).toUpperCase());
+      if (reportIdEl) {
+        reportIdEl.textContent = displayId;
+      }
+      if (trackBtn) {
+        trackBtn.href = `track.html?id=${encodeURIComponent(report.id)}`;
+      }
+      if (locEl) {
+        locEl.textContent = report.locationText || "Location pending";
+      }
+      if (statusEl) {
+        statusEl.textContent = (report.status || "REPORT_SUBMITTED").toUpperCase();
+      }
+    } else {
+      if (reportIdEl) reportIdEl.textContent = "REPORT SUBMITTED";
+    }
+  },
+
+  // 8. Reports list
+  async initReports() {
+    const grid = document.getElementById("reports-grid");
+    if (!grid) return;
+
+    grid.innerHTML = `
+      <div class="card" style="grid-column: 1 / -1; text-align: center; padding: 24px;">
+        <p class="muted" style="margin: 0;">Loading your reports...</p>
+      </div>
+    `;
+
+    try {
+      let service = window.ReportsService;
+      if (!service) {
+        try {
+          service = await import("../js/reports.js");
+        } catch (e) {
+          service = await import("/js/reports.js");
+        }
+      }
+
+      const user = await (service?.getAuthenticatedUser ? service.getAuthenticatedUser() : window.getCurrentFirebaseUser?.());
+
+      if (!user || !user.uid) {
+        grid.innerHTML = `
+          <div class="card" style="grid-column: 1 / -1; text-align: center; padding: 32px 16px;">
+            <p class="muted" style="margin-bottom: 12px;">Please sign in to view your reports.</p>
+            <a href="../login.html" class="primary-btn small-btn" style="display:inline-flex;">SIGN IN</a>
+          </div>
+        `;
+        return;
+      }
+
+      const reports = await service.getCitizenReports(user.uid);
+
+      if (!reports || reports.length === 0) {
+        grid.innerHTML = `
+          <div class="card" style="grid-column: 1 / -1; text-align: center; padding: 36px 16px;">
+            <div style="font-size: 36px; margin-bottom: 8px;">📋</div>
+            <h3 style="margin-bottom: 6px;">No reports yet</h3>
+            <p class="muted" style="margin-bottom: 16px;">You haven't submitted any civic reports yet.</p>
+            <a href="report.html" class="primary-btn small-btn" style="display:inline-flex;">＋ REPORT A PROBLEM</a>
+          </div>
+        `;
+        return;
+      }
+
+      grid.innerHTML = reports.map((rep) => {
+        const displayId = "CF-" + rep.id.slice(0, 8).toUpperCase();
+        const categoryText = rep.category ? rep.category : "Pending analysis";
+        const locationText = rep.locationText || "Location pending";
+        const status = (rep.status || "SUBMITTED").toUpperCase();
+        const statusClass = (status === "RESOLVED" || status === "CLOSED") ? "done" : "active";
+        const dateStr = service?.formatReportDate ? service.formatReportDate(rep.createdAt || rep.rawCreatedAt) : "";
+
+        return `
+          <div class="card">
+            ${rep.imageUrl ? `
+              <div style="width: 100%; height: 160px; border-radius: 8px; overflow: hidden; margin-bottom: 12px; background: #f1f5f9;">
+                <img src="${window.esc(rep.imageUrl)}" alt="Report Photo" style="width: 100%; height: 100%; object-fit: cover;">
+              </div>
+            ` : ""}
+            <div class="row between">
+              <strong>${window.esc(categoryText.toUpperCase())}</strong>
+              <span class="status ${statusClass}">${window.esc(status)}</span>
+            </div>
+            <h3 style="margin:10px 0 4px;font-size:22px;">${window.esc(locationText)}</h3>
+            <p class="muted" style="margin-bottom:16px;">${window.esc(displayId)}${dateStr ? ` · ${window.esc(dateStr)}` : ""}</p>
+            <a href="track.html?id=${encodeURIComponent(rep.id)}" class="secondary-btn small-btn" style="display:inline-flex;">TRACK REPORT</a>
+          </div>
+        `;
+      }).join("");
+
+    } catch (err) {
+      console.error("Error loading citizen reports:", err);
+      grid.innerHTML = `
+        <div class="card" style="grid-column: 1 / -1; text-align: center; padding: 24px;">
+          <p style="color: #b91c1c; font-weight: 600; margin-bottom: 8px;">Unable to load your reports. Please try again.</p>
+          <button type="button" class="secondary-btn small-btn" onclick="CitizenApp.initReports()">RETRY</button>
+        </div>
+      `;
+    }
+  },
+
+  // 9. Track
+  async initTrack() {
+    const params = new URLSearchParams(window.location.search);
+    const reportId = params.get("id") || window.AppState?.currentReport?.id;
+
+    const reportIdEl = document.getElementById("track-report-id");
+    const statusBadge = document.getElementById("track-status-badge");
+    const imgWrap = document.getElementById("track-img-wrap");
+    const imgEl = document.getElementById("track-img");
+    const catEl = document.getElementById("track-category");
+    const descEl = document.getElementById("track-desc");
+    const locEl = document.getElementById("track-location");
+    const metaEl = document.getElementById("track-meta");
+    const timelineContainer = document.getElementById("track-timeline");
+
+    if (!reportId) {
+      if (reportIdEl) reportIdEl.textContent = "No Report Selected";
+      if (statusBadge) statusBadge.classList.add("hidden");
+      if (locEl) locEl.textContent = "Please select a report from My Reports.";
+      return;
+    }
+
+    try {
+      let service = window.ReportsService;
+      if (!service) {
+        try {
+          service = await import("../js/reports.js");
+        } catch (e) {
+          service = await import("/js/reports.js");
+        }
+      }
+
+      const report = await service.getReportById(reportId);
+
+      if (!report) {
+        if (reportIdEl) reportIdEl.textContent = reportId;
+        if (statusBadge) {
+          statusBadge.textContent = "NOT FOUND";
+          statusBadge.className = "status danger";
+        }
+        if (locEl) locEl.textContent = "Report document was not found in Firestore.";
+        return;
+      }
+
+      // Display actual stored data:
+      // report ID (derived display ID)
+      const displayId = "CF-" + report.id.slice(0, 8).toUpperCase();
+      if (reportIdEl) reportIdEl.textContent = displayId;
+
+      // status & badge
+      const currentStatus = report.status || "REPORT_SUBMITTED";
+      if (statusBadge) {
+        statusBadge.textContent = currentStatus.toUpperCase();
+        statusBadge.className = `status ${(currentStatus === "RESOLVED" || currentStatus === "CLOSED") ? "done" : "active"}`;
+      }
+
+      // image (using imageUrl)
+      if (report.imageUrl) {
+        if (imgEl) imgEl.src = report.imageUrl;
+        if (imgWrap) imgWrap.classList.remove("hidden");
+      } else {
+        if (imgWrap) imgWrap.classList.add("hidden");
+      }
+
+      // category
+      if (catEl) {
+        catEl.textContent = report.category || "General Civic";
+      }
+
+      // severity
+      const sevEl = document.getElementById("track-severity");
+      if (sevEl) {
+        const s = (report.severity || "Not available").toUpperCase();
+        sevEl.textContent = s;
+        sevEl.className = `status ${(s === "HIGH" || s === "CRITICAL") ? "active" : "done"}`;
+      }
+
+      // description
+      if (descEl) {
+        if (report.description) {
+          descEl.textContent = report.description;
+          descEl.classList.remove("hidden");
+        } else {
+          descEl.classList.add("hidden");
+        }
+      }
+
+      // location
+      if (locEl) {
+        let locText = report.locationText || "";
+        if (report.ward) locText += (locText ? ` · Ward ${report.ward}` : `Ward ${report.ward}`);
+        if (!locText && report.latitude && report.longitude) {
+          locText = `GPS: ${report.latitude.toFixed(4)}, ${report.longitude.toFixed(4)}`;
+        }
+        locEl.textContent = locText || "Location recorded";
+      }
+
+      // department & responsible unit
+      const deptEl = document.getElementById("track-dept");
+      if (deptEl) {
+        deptEl.textContent = report.department || "City Engineer / PWD";
+      }
+
+      const unitEl = document.getElementById("track-unit");
+      if (unitEl) {
+        unitEl.textContent = report.responsibleUnit || (service.getResponsibleUnit ? service.getResponsibleUnit(report.department) : "Road Maintenance Team");
+      }
+
+      // master incident
+      const masterEl = document.getElementById("track-master");
+      if (masterEl) {
+        if (report.masterIncidentId) {
+          masterEl.innerHTML = `<span style="color:var(--blue);font-weight:800;">${window.esc(report.masterIncidentId)}</span>`;
+        } else {
+          masterEl.textContent = "None (Independent submission)";
+        }
+      }
+
+      // current stage
+      const stageEl = document.getElementById("track-stage");
+      if (stageEl) {
+        stageEl.textContent = `STAGE: ${(report.currentStage || report.status || "REPORT_SUBMITTED").toUpperCase()}`;
+      }
+
+      // createdAt
+      const dateFormatted = service?.formatReportDate ? service.formatReportDate(report.createdAt) : (report.createdAt ? new Date(report.createdAt).toLocaleString() : "");
+      if (metaEl) {
+        metaEl.textContent = `Submitted: ${dateFormatted || "Recently"}${report.citizenEmail ? ` · ${report.citizenEmail}` : ""}`;
+      }
+
+      // Real workflow history from Firestore (No fake timeline progress)
+      if (timelineContainer) {
+        const events = await service.getWorkflowEvents(report.id);
+
+        if (events && events.length > 0) {
+          timelineContainer.innerHTML = events.map((ev, idx) => {
+            const evDate = service?.formatReportDate ? service.formatReportDate(ev.createdAt || ev.rawCreatedAt) : "Recently";
+            const role = ev.actorRole || "SYSTEM";
+            const toSt = (ev.toStatus || "STATUS UPDATE").toUpperCase();
+            const msg = ev.message || `Status updated to ${toSt}`;
+            const isDone = true;
+
+            return `
+              <div class="timeline-item ${isDone ? "done" : ""}">
+                <div class="timeline-dot">✓</div>
+                <div>
+                  <strong>${window.esc(toSt)}</strong>
+                  <div class="muted" style="font-size:14px;margin-top:2px;">${window.esc(msg)}</div>
+                  <div style="font-size:12px;color:var(--blue);font-weight:700;margin-top:4px;">
+                    ${window.esc(evDate)} · Logged by ${window.esc(role)}
+                  </div>
+                </div>
+              </div>
+            `;
+          }).join("");
+        } else {
+          // Fallback to real submission event if workflowEvents collection is empty
+          timelineContainer.innerHTML = `
+            <div class="timeline-item done">
+              <div class="timeline-dot">✓</div>
+              <div>
+                <strong>REPORT_SUBMITTED</strong>
+                <div class="muted" style="font-size:14px;margin-top:2px;">Report securely recorded in Firestore and routed to ${window.esc(report.department || "Municipal Department")}.</div>
+                <div style="font-size:12px;color:var(--blue);font-weight:700;margin-top:4px;">${window.esc(dateFormatted || "Recently")} · Logged by CITIZEN</div>
+              </div>
+            </div>
+            <div class="timeline-item">
+              <div class="timeline-dot">○</div>
+              <div>
+                <strong>PENDING DEPARTMENT REVIEW</strong>
+                <div class="muted" style="font-size:14px;margin-top:2px;">Municipal engineers are reviewing the reported issue.</div>
+              </div>
+            </div>
+          `;
+        }
+      }
+
+      const verifyBtn = document.getElementById("track-verify-btn");
+      if (verifyBtn) {
+        const checkStatus = (currentStatus || "").toUpperCase();
+        if (["RESOLUTION SUBMITTED", "RESOLUTION_SUBMITTED", "CITIZEN VERIFICATION", "CITIZEN_VERIFICATION", "CLOSED", "REOPENED"].includes(checkStatus)) {
+          verifyBtn.classList.remove("hidden");
+        } else {
+          verifyBtn.classList.add("hidden");
+        }
+      }
+
+    } catch (err) {
+      console.error("Error loading report tracking data:", err);
+      if (reportIdEl) reportIdEl.textContent = reportId;
+      if (locEl) locEl.textContent = "Error loading report details from Firestore.";
+    }
+  },
+
+  // 10. Verify
+  initVerify() {
+    window.ensureCitizenDemoState();
+    if (!window.AppState.currentResolution) {
+      window.AppState.currentResolution = {
+        masterIncidentId: "KMC-042",
+        beforeImage: "../assets/before-pothole.svg",
+        afterImage: "../assets/after-repaired.svg",
+        location: "Prathamesh Nagar, Salokhe Nagar, Kalamba",
+        ward: "20",
+        timestamp: "Today, 11:45 AM",
+        aiVerification: {
+          issueArea: "Appears repaired",
+          location: "Matched",
+          evidence: "Complete",
+          verification: "READY FOR HUMAN REVIEW"
+        },
+        citizenVerification: null
+      };
+      window.saveState();
+    }
+
+    const m = window.AppState.currentMasterIncident;
+    const actionsBox = document.getElementById("verify-actions-box");
+    const closedBox = document.getElementById("verify-closed-box");
+    const reopenedBox = document.getElementById("verify-reopened-box");
+
+    if (m.status === "Closed") {
+      if (actionsBox) actionsBox.classList.add("hidden");
+      if (reopenedBox) reopenedBox.classList.add("hidden");
+      if (closedBox) closedBox.classList.remove("hidden");
+    } else if (m.status === "Reopened") {
+      if (actionsBox) actionsBox.classList.add("hidden");
+      if (closedBox) closedBox.classList.add("hidden");
+      if (reopenedBox) reopenedBox.classList.remove("hidden");
+    }
+
+    const yesBtn = document.getElementById("verify-yes-btn");
+    const noBtn = document.getElementById("verify-no-btn");
+
+    if (yesBtn) {
+      yesBtn.addEventListener("click", () => {
+        window.CivicService.confirmResolution("Fixed");
+        if (actionsBox) actionsBox.classList.add("hidden");
+        if (closedBox) closedBox.classList.remove("hidden");
+      });
+    }
+
+    if (noBtn) {
+      noBtn.addEventListener("click", () => {
+        window.CivicService.confirmResolution("Reopened");
+        if (actionsBox) actionsBox.classList.add("hidden");
+        if (reopenedBox) reopenedBox.classList.remove("hidden");
+      });
+    }
+  }
+};

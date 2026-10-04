@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Confirm Problem Location — AI CivicFix</title>
+  <link rel="stylesheet" href="../css/style.css">
+  <link rel="stylesheet" href="../css/citizen.css">
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+</head>
+<body class="citizen-page">
+  <div id="header-mount"></div>
+
+  <main class="citizen-content">
+    <div class="narrow">
+      <div class="progress-steps">
+        <div class="progress-step done">1 PHOTO ✓</div>
+        <div class="progress-step active">2 LOCATION</div>
+        <div class="progress-step">3 CONFIRM</div>
+      </div>
+
+      <h1 style="font-size:34px;margin-bottom:8px;">CONFIRM PROBLEM LOCATION</h1>
+      <p class="muted" style="margin-bottom:20px;">Drag the pin to the exact civic problem location. KMC municipal jurisdiction and 100-metre nearby incident search update in real time.</p>
+
+      <!-- Interactive Leaflet Map with Movable Pin -->
+      <div class="card" style="padding:0;overflow:hidden;border:1.5px solid var(--blue-mid);margin-bottom:18px;">
+        <div id="location-picker-map" style="height:320px;width:100%;"></div>
+      </div>
+
+      <!-- Selected Location Card -->
+      <div class="address-card">
+        <div class="row between">
+          <div class="kicker">Your Location</div>
+          <span id="loc-jurisdiction-badge" class="demo-label" style="margin:0;font-size:11px;padding:3px 8px;">KMC Jurisdiction</span>
+        </div>
+        <h3 id="loc-address" style="margin:8px 0 12px;font-size:22px;line-height:1.25;">Prathamesh Nagar, Salokhe Nagar, Kalamba, Kolhapur</h3>
+
+        <div class="grid grid-3" style="gap:10px;margin-top:12px;">
+          <div class="card compact" style="background:#F5F7FA;padding:10px 12px;">
+            <div class="kicker" style="font-size:11px;">Latitude</div>
+            <strong id="loc-lat" style="font-size:15px;color:var(--blue);">16.691307</strong>
+          </div>
+          <div class="card compact" style="background:#F5F7FA;padding:10px 12px;">
+            <div class="kicker" style="font-size:11px;">Longitude</div>
+            <strong id="loc-lng" style="font-size:15px;color:var(--blue);">74.244866</strong>
+          </div>
+          <div class="card compact" style="background:#F5F7FA;padding:10px 12px;">
+            <div class="kicker" style="font-size:11px;">Accuracy</div>
+            <strong id="loc-accuracy" style="font-size:15px;color:var(--blue);">±12 m</strong>
+          </div>
+        </div>
+
+        <!-- Section 9: Low accuracy warning -->
+        <div id="loc-accuracy-warning" class="callout hidden" style="border-left:4px solid #f59e0b;background:#fefce8;color:#92400e;margin-top:12px;padding:10px 12px;font-size:13px;font-weight:600;">
+          Location accuracy is low. Please move the pin to the exact problem location.
+        </div>
+
+        <!-- Section 20: Outside KMC warning -->
+        <div id="loc-outside-warning" class="callout hidden" style="border-left:4px solid #b91c1c;background:#fef2f2;color:#b91c1c;margin-top:12px;padding:10px 12px;font-size:13px;font-weight:600;">
+          Outside KMC service boundary. Please place the pin within Kolhapur Municipal Corporation limits.
+        </div>
+      </div>
+
+      <!-- KMC Municipal Jurisdiction Details -->
+      <div class="card" style="margin-top:16px;">
+        <div class="kicker">KOLHAPUR MUNICIPAL JURISDICTION</div>
+        <div class="grid grid-2" style="margin-top:10px;">
+          <div>
+            <div class="kicker" style="font-size:11px;">Municipality</div>
+            <h4 id="loc-municipality" style="margin:2px 0 0;font-size:17px;color:var(--blue);">Kolhapur Municipal Corporation</h4>
+          </div>
+          <div>
+            <div class="kicker" style="font-size:11px;">Ward (Point-In-Polygon)</div>
+            <h4 id="loc-ward" style="margin:2px 0 0;font-size:17px;color:var(--blue);">20</h4>
+            <div id="loc-ward-name" class="muted" style="font-size:12px;margin-top:2px;">Ward 20 — Salokhe Nagar / Kalamba / Prathamesh Nagar</div>
+          </div>
+        </div>
+
+        <div class="divider" style="margin:12px 0;"></div>
+
+        <div>
+          <div class="kicker" style="font-size:11px;">Division</div>
+          <strong id="loc-division" style="font-size:14px;color:var(--blue);">Pending official KMC division mapping</strong>
+          <div class="muted" style="font-size:12px;margin-top:2px;">KMC has 4 divisional offices (City Engineer/PWD structure). Administrative polygon assignment pending.</div>
+        </div>
+      </div>
+
+      <!-- Section 15: Similar Reports within 100 m -->
+      <div class="card" style="margin-top:16px;">
+        <div class="row between">
+          <div class="kicker">Geospatial Evidence Search</div>
+          <span id="nearby-count-badge" class="demo-label" style="font-size:11px;padding:3px 8px;">100m Radius</span>
+        </div>
+        <h3 id="nearby-heading" style="font-size:20px;margin:6px 0 12px;">SIMILAR REPORTS WITHIN 100 M</h3>
+        
+        <div id="nearby-reports-list">
+          <div class="muted" style="font-size:14px;padding:12px 0;text-align:center;">
+            Scanning 100m radius around selected pin...
+          </div>
+        </div>
+      </div>
+
+      <!-- Quick Location Controls -->
+      <div class="row" style="margin-top:20px;">
+        <button id="use-my-loc-btn" type="button" class="secondary-btn" style="flex:1;">
+          ◎ USE MY LOCATION
+        </button>
+        <button id="use-demo-loc-btn" type="button" class="ghost-btn" style="flex:1;">
+          USE TEST AREA (WARD 20)
+        </button>
+      </div>
+
+      <button id="location-continue-btn" type="button" class="primary-btn" style="width:100%;margin-top:20px;">
+        CONFIRM LOCATION ➔
+      </button>
+
+      <div style="text-align:center;margin-top:28px;">
+        <span class="demo-label">AI CivicFix — Hackathon Prototype</span>
+      </div>
+    </div>
+  </main>
+
+  <div id="nav-mount"></div>
+
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <script src="../js/mock-data.js"></script>
+  <script src="../js/state.js"></script>
+  <script type="module" src="../js/auth.js"></script>
+  <script type="module" src="../js/geohash.js"></script>
+  <script type="module" src="../js/kolhapur-jurisdiction.js"></script>
+  <script type="module" src="../js/duplicate-service.js"></script>
+  <script src="../js/services.js"></script>
+  <script src="../js/routing.js"></script>
+  <script src="../js/citizen.js"></script>
+  <script src="../js/app.js"></script>
+  <script>
+    document.getElementById("header-mount").innerHTML = renderGlobalHeader({ role: "citizen" });
+    document.getElementById("nav-mount").innerHTML = renderCitizenNav("report");
+    CitizenApp.initLocation();
+  </script>
+</body>
+</html>

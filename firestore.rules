@@ -1,0 +1,121 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Helper functions
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    function hasUserProfile() {
+      return isAuthenticated() && exists(/databases/$(database)/documents/users/$(request.auth.uid));
+    }
+
+    function getUserData() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
+    }
+
+    function isSuperAdmin() {
+      return hasUserProfile() && getUserData().role == 'SUPER_ADMIN';
+    }
+
+    function isDepartmentAdmin() {
+      return hasUserProfile() && (
+        getUserData().role == 'DEPARTMENT_ADMIN' ||
+        getUserData().role == 'DEPARTMENT_ADMIN\n'
+      );
+    }
+
+    function isFieldOfficer() {
+      return hasUserProfile() && getUserData().role == 'FIELD_OFFICER';
+    }
+
+    function isStaff() {
+      return isSuperAdmin() || isDepartmentAdmin() || isFieldOfficer();
+    }
+
+    function isCitizenOwner(docData) {
+      return isAuthenticated() && docData.citizenId == request.auth.uid;
+    }
+
+    function isInitialEditableStatus(docData) {
+      return docData.status == 'REPORT_SUBMITTED' || 
+             docData.status == 'SUBMITTED' || 
+             docData.status == 'Pending' || 
+             docData.status == 'PENDING';
+    }
+
+    function citizenImmutableFieldsUnchanged() {
+      let req = request.resource.data;
+      let res = resource.data;
+      return req.citizenId == res.citizenId
+          && (!('citizenEmail' in res) || req.citizenEmail == res.citizenEmail)
+          && (!('createdAt' in res) || req.createdAt == res.createdAt)
+          && (!('department' in res) || req.department == res.department)
+          && (!('responsibleUnit' in res) || req.responsibleUnit == res.responsibleUnit)
+          && (!('ward' in res) || req.ward == res.ward)
+          && (!('division' in res) || req.division == res.division)
+          && (!('jurisdictionStatus' in res) || req.jurisdictionStatus == res.jurisdictionStatus)
+          && (!('masterIncidentId' in res) || req.masterIncidentId == res.masterIncidentId)
+          && (!('status' in res) || req.status == res.status)
+          && (!('currentStage' in res) || req.currentStage == res.currentStage)
+          && (!('category' in res) || req.category == res.category)
+          && (!('severity' in res) || req.severity == res.severity)
+          && (!('aiAnalysisStatus' in res) || req.aiAnalysisStatus == res.aiAnalysisStatus)
+          && (!('aiConfidence' in res) || req.aiConfidence == res.aiConfidence)
+          && (!('aiSummary' in res) || req.aiSummary == res.aiSummary)
+          && (!('duplicateStatus' in res) || req.duplicateStatus == res.duplicateStatus)
+          && (!('duplicateScore' in res) || req.duplicateScore == res.duplicateScore);
+    }
+
+    // User profile collection
+    match /users/{userId} {
+      allow read: if isAuthenticated();
+      allow write: if isAuthenticated() && request.auth.uid == userId;
+    }
+
+    // Reports collection
+    // Citizen CREATE: Only if authenticated and citizenId matches auth UID
+    // Citizen READ: Only own reports (or staff users reading municipal reports)
+    // Citizen UPDATE:
+    //   - Soft-removal (deletedForCitizen = true) allowed for own reports at ANY stage (submitted, work in progress, resolved, closed)
+    //   - Description editing allowed only during initial editable status
+    //   - All municipal workflow fields remain strictly immutable
+    // Staff UPDATE: Super Admin, Department Admin, and Field Officer can update reports for workflow progression
+    // Citizen DELETE: Physical deletion forbidden to protect municipal audit history; soft removal (deletedForCitizen) must be used.
+    match /reports/{reportId} {
+      allow create: if isAuthenticated() 
+                    && request.resource.data.citizenId == request.auth.uid;
+
+      allow read: if isAuthenticated() && (
+        isStaff() || resource.data.citizenId == request.auth.uid
+      );
+
+      allow update: if isAuthenticated() && (
+        isStaff() || (
+          isCitizenOwner(resource.data) &&
+          citizenImmutableFieldsUnchanged() && (
+            (request.resource.data.deletedForCitizen == true) ||
+            isInitialEditableStatus(resource.data)
+          )
+        )
+      );
+
+      allow delete: if isAuthenticated() && isSuperAdmin();
+    }
+
+    // Master Incidents collection
+    match /masterIncidents/{incidentId} {
+      allow read: if isAuthenticated();
+      allow create, update: if isAuthenticated();
+      allow delete: if false;
+    }
+
+    // Workflow Events collection
+    match /workflowEvents/{eventId} {
+      allow read: if isAuthenticated();
+      allow create: if isAuthenticated();
+      allow update, delete: if false;
+    }
+  }
+}

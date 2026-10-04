@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AI CivicFix — From Citizen Complaints to Verified Municipal Action</title>
+  <link rel="stylesheet" href="css/style.css">
+  <script>
+    // Immediate redirect based on existing session state
+    try {
+      let user = null;
+      const direct = localStorage.getItem("currentUser");
+      if (direct) {
+        user = JSON.parse(direct);
+      } else {
+        const saved = localStorage.getItem("civicfixState");
+        if (saved) {
+          user = JSON.parse(saved).currentUser || null;
+        }
+      }
+      if (user && user.role) {
+        const r = (user.role || "").toUpperCase();
+        if (r === "CITIZEN") window.location.href = "citizen/home.html";
+        else if (r === "SUPER_ADMIN") window.location.href = "admin/dashboard.html";
+        else if (r === "DEPARTMENT_ADMIN") window.location.href = "admin/department.html";
+        else if (r === "FIELD_OFFICER") window.location.href = "field/work.html";
+      }
+    } catch(e) {}
+  </script>
+</head>
+<body>
+  <div style="min-height:100vh;display:grid;place-items:center;padding:24px;text-align:center;">
+    <div class="card" style="max-width:540px;width:100%;">
+      <div class="brand" style="justify-content:center;margin-bottom:16px;">
+        <div class="brand-mark">CF</div>
+        <div>
+          <div style="font-size:24px;">AI CivicFix</div>
+          <div class="brand-sub">Kolhapur Municipal Corporation (KMC)</div>
+        </div>
+      </div>
+      <p class="muted">From Citizen Complaints to Verified Municipal Action</p>
+      <div class="divider"></div>
+      <a href="login.html" class="primary-btn" style="width:100%;margin-bottom:12px;">ENTER APPLICATION</a>
+      <span class="demo-label" style="display:inline-block;margin-top:10px;">AI CivicFix — Hackathon Prototype</span>
+    </div>
+  </div>
+</body>
+</html>

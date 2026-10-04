@@ -1,0 +1,5 @@
+2026/10/04-00:49:49.318 b68 Creating DB C:\Users\Atharv Naik\Desktop\AI-CivicFix-Manual-UI\scratch\edge-profile-analysis\Default\EdgeCoupons/coupons_data.db since it was missing.
+2026/10/04-00:49:49.329 b68 Reusing MANIFEST C:\Users\Atharv Naik\Desktop\AI-CivicFix-Manual-UI\scratch\edge-profile-analysis\Default\EdgeCoupons/coupons_data.db/MANIFEST-000001
+2026/10/04-00:49:49.574 5e60 Level-0 table #5: started
+2026/10/04-00:49:49.578 5e60 Level-0 table #5: 683273 bytes OK
+2026/10/04-00:49:49.580 5e60 Delete type=0 #3

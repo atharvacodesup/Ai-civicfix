@@ -1,0 +1,265 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Citizen Dashboard — AI CivicFix</title>
+  <link rel="stylesheet" href="../css/style.css">
+  <link rel="stylesheet" href="../css/citizen.css">
+</head>
+<body class="citizen-page">
+
+  <!-- TOP HEADER (Primary Navigation: Exists ONLY Here) -->
+  <header class="citizen-header">
+    <div class="citizen-container">
+      <div class="header-inner">
+        <!-- Left: Brand Identity -->
+        <a href="home.html" class="brand" aria-label="AI CivicFix Home">
+          <div class="brand-mark" aria-hidden="true">CF</div>
+          <div class="brand-text">
+            <span class="brand-title">AI CivicFix</span>
+            <span class="brand-sub">KMC Civic Services</span>
+          </div>
+        </a>
+
+        <!-- Center: Primary Desktop Navigation Bar -->
+        <nav class="desktop-nav" aria-label="Primary Navigation">
+          <a href="home.html" class="desktop-nav-link active" aria-current="page">Home</a>
+          <a href="report.html" class="desktop-nav-link">Report Problem</a>
+          <a href="reports.html" class="desktop-nav-link">My Reports</a>
+        </nav>
+
+        <!-- Right: Authenticated Citizen Profile -->
+        <div class="citizen-header-right">
+          <div class="citizen-profile-chip" id="citizen-profile-chip">
+            <div class="citizen-avatar" id="citizen-header-avatar" aria-hidden="true">C</div>
+            <div class="citizen-profile-info">
+              <span class="citizen-name" id="citizen-header-name">Citizen</span>
+              <span class="citizen-role-badge">CITIZEN</span>
+            </div>
+          </div>
+          <button class="ghost-btn citizen-logout-btn" data-action="logout" type="button" aria-label="Sign out">
+            <span>Logout</span>
+          </button>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <!-- MAIN DASHBOARD CANVAS -->
+  <main class="citizen-main-content">
+    <div class="citizen-container">
+
+      <!-- HERO / WELCOME SECTION (12-Col Desktop Grid: 7 cols left, 5 cols right) -->
+      <section class="citizen-section hero-section" aria-label="Welcome and Reporting Overview">
+        <div class="desktop-hero-grid">
+          <div class="hero-col-left">
+            <div class="citizen-eyebrow">KMC CIVIC SERVICES</div>
+            <h1 class="hero-main-heading" id="citizen-hero-heading">Report a Civic Problem</h1>
+            <p class="hero-supporting-text">
+              Take a photo, share the location, and let AI CivicFix guide your report through the municipal process.
+            </p>
+            <div class="hero-meta-badge">
+              <span class="meta-badge-dot" aria-hidden="true">●</span>
+              <span>KMC Municipal Service Portal — Direct Department Routing</span>
+            </div>
+          </div>
+
+          <div class="hero-col-right">
+            <div class="workflow-panel" aria-label="CivicFix Workflow">
+              <div class="workflow-panel-header">
+                <div class="workflow-kicker">MUNICIPAL PIPELINE</div>
+                <h3 class="workflow-panel-title">Citizen Workflow</h3>
+              </div>
+              <div class="workflow-steps-list">
+                <div class="workflow-step-row">
+                  <div class="workflow-indicator">
+                    <span class="workflow-num">01</span>
+                    <span class="workflow-stem" aria-hidden="true"></span>
+                  </div>
+                  <div class="workflow-text-block">
+                    <strong class="workflow-step-name">PHOTO</strong>
+                    <span class="workflow-step-desc">Share the civic problem</span>
+                  </div>
+                </div>
+
+                <div class="workflow-step-row">
+                  <div class="workflow-indicator">
+                    <span class="workflow-num">02</span>
+                    <span class="workflow-stem" aria-hidden="true"></span>
+                  </div>
+                  <div class="workflow-text-block">
+                    <strong class="workflow-step-name">AI UNDERSTANDING</strong>
+                    <span class="workflow-step-desc">Identify the issue</span>
+                  </div>
+                </div>
+
+                <div class="workflow-step-row">
+                  <div class="workflow-indicator">
+                    <span class="workflow-num">03</span>
+                    <span class="workflow-stem" aria-hidden="true"></span>
+                  </div>
+                  <div class="workflow-text-block">
+                    <strong class="workflow-step-name">LOCATION</strong>
+                    <span class="workflow-step-desc">Locate the problem</span>
+                  </div>
+                </div>
+
+                <div class="workflow-step-row">
+                  <div class="workflow-indicator">
+                    <span class="workflow-num">04</span>
+                  </div>
+                  <div class="workflow-text-block">
+                    <strong class="workflow-step-name">TRACK</strong>
+                    <span class="workflow-step-desc">Follow its progress</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- 1. REPORT OVERVIEW (3-Card Metrics Dashboard Grid) -->
+      <section class="citizen-section report-overview-section" aria-label="Report Overview">
+        <div class="section-title-wrap">
+          <div class="citizen-eyebrow">DASHBOARD SUMMARY</div>
+          <h2 class="section-main-title">YOUR REPORTS</h2>
+        </div>
+
+        <div class="metrics-dashboard-grid" id="metrics-dashboard-grid">
+          <div class="metric-card">
+            <span class="metric-label">ACTIVE REPORTS</span>
+            <div class="metric-value-wrap">
+              <span class="metric-value" id="summary-active-count">0</span>
+              <span class="metric-badge active-badge">In Progress</span>
+            </div>
+          </div>
+          <div class="metric-card">
+            <span class="metric-label">RESOLVED REPORTS</span>
+            <div class="metric-value-wrap">
+              <span class="metric-value" id="summary-resolved-count">0</span>
+              <span class="metric-badge resolved-badge">Completed</span>
+            </div>
+          </div>
+          <div class="metric-card">
+            <span class="metric-label">TOTAL REPORTS</span>
+            <div class="metric-value-wrap">
+              <span class="metric-value" id="summary-total-count">0</span>
+              <span class="metric-badge total-badge">Submitted</span>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- 2. RECENT REPORTS (3-Column Desktop Grid) -->
+      <section class="citizen-section recent-reports-section" id="reports-section" aria-label="Recent Reports">
+        <div class="section-header-split">
+          <div class="section-title-wrap">
+            <div class="citizen-eyebrow">ACTIVITY LOG</div>
+            <h2 class="section-main-title">RECENT REPORTS</h2>
+          </div>
+        </div>
+
+        <!-- Recent Reports Grid / Empty State Container -->
+        <div id="citizen-recent-reports-container" class="recent-reports-grid" aria-live="polite">
+          <div class="loading-state-box">
+            <p class="muted" style="margin:0; font-size:16px; color: var(--blue);">Loading your reports from Firestore...</p>
+          </div>
+        </div>
+      </section>
+
+      <!-- 3. HOW CIVICFIX WORKS (4-Column Desktop Grid) -->
+      <section class="citizen-section how-works-section" aria-label="How CivicFix Works">
+        <div class="section-title-wrap center-header">
+          <div class="citizen-eyebrow">HOW CIVICFIX WORKS</div>
+          <h2 class="section-main-title">From a citizen report to municipal action.</h2>
+        </div>
+
+        <div class="how-works-grid">
+          <div class="how-step-card">
+            <div class="how-step-badge">01</div>
+            <h3 class="how-step-title">REPORT</h3>
+            <p class="how-step-desc">Share a photo and location.</p>
+          </div>
+
+          <div class="how-step-card">
+            <div class="how-step-badge">02</div>
+            <h3 class="how-step-title">UNDERSTAND</h3>
+            <p class="how-step-desc">AI helps identify the civic problem.</p>
+          </div>
+
+          <div class="how-step-card">
+            <div class="how-step-badge">03</div>
+            <h3 class="how-step-title">ROUTE</h3>
+            <p class="how-step-desc">The issue moves into the appropriate municipal workflow.</p>
+          </div>
+
+          <div class="how-step-card">
+            <div class="how-step-badge">04</div>
+            <h3 class="how-step-title">TRACK</h3>
+            <p class="how-step-desc">Follow progress until resolution.</p>
+          </div>
+        </div>
+      </section>
+
+      <!-- 4. GUIDANCE SECTION (Horizontal Desktop Panel) -->
+      <section class="citizen-section guidance-section" aria-label="Reporting Guidance">
+        <div class="guidance-horizontal-panel">
+          <div class="guidance-left-col">
+            <div class="guidance-title-row">
+              <span class="guidance-icon-mark" aria-hidden="true">💡</span>
+              <h3 class="guidance-heading">HELP US REPORT IT CLEARLY</h3>
+            </div>
+            <p class="guidance-copy">
+              Clear information helps us process your report more effectively.
+            </p>
+          </div>
+          <div class="guidance-right-col">
+            <div class="guidance-item-card">
+              <span class="guidance-item-icon" aria-hidden="true">📸</span>
+              <span class="guidance-item-text">CLEAR PHOTO</span>
+            </div>
+            <div class="guidance-item-card">
+              <span class="guidance-item-icon" aria-hidden="true">📍</span>
+              <span class="guidance-item-text">ACCURATE LOCATION</span>
+            </div>
+            <div class="guidance-item-card">
+              <span class="guidance-item-icon" aria-hidden="true">📝</span>
+              <span class="guidance-item-text">SHORT DESCRIPTION</span>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- FOOTER -->
+      <footer class="citizen-page-footer">
+        <div class="footer-top-brand">
+          <span class="footer-brand-title">AI CivicFix</span>
+          <span class="footer-divider" aria-hidden="true">·</span>
+          <span class="footer-brand-dept">KMC Civic Services</span>
+        </div>
+        <div class="footer-badge-wrap">
+          <span class="demo-label">AI CivicFix — Hackathon Prototype</span>
+        </div>
+      </footer>
+
+    </div>
+  </main>
+
+  <!-- MOBILE BOTTOM NAVIGATION (Hidden on Desktop) -->
+  <div id="nav-mount"></div>
+
+  <script src="../js/mock-data.js"></script>
+  <script src="../js/state.js"></script>
+  <script type="module" src="../js/auth.js"></script>
+  <script type="module" src="../js/reports.js"></script>
+  <script src="../js/services.js"></script>
+  <script src="../js/citizen.js"></script>
+  <script src="../js/app.js"></script>
+  <script>
+    document.getElementById("nav-mount").innerHTML = renderCitizenNav("home");
+    CitizenApp.initHome();
+  </script>
+</body>
+</html>

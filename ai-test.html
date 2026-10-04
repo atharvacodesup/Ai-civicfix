@@ -1,0 +1,193 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI CivicFix - Gemini Connection Test</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background-color: #F5F7FA;
+            color: #1E293B;
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 24px;
+        }
+        .test-card {
+            background: #FFFFFF;
+            border: 1px solid #E2E8F0;
+            border-radius: 12px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+            max-width: 560px;
+            width: 100%;
+            padding: 32px;
+        }
+        .brand {
+            font-size: 14px;
+            font-weight: 700;
+            color: #0B3D91;
+            letter-spacing: 0.5px;
+            text-transform: uppercase;
+            margin-bottom: 8px;
+        }
+        h1 {
+            font-size: 24px;
+            font-weight: 700;
+            color: #0F172A;
+            margin-bottom: 8px;
+        }
+        p.subtitle {
+            font-size: 14px;
+            color: #64748B;
+            margin-bottom: 24px;
+        }
+        .config-badge {
+            background-color: #F1F5F9;
+            border-radius: 6px;
+            padding: 8px 12px;
+            font-size: 13px;
+            color: #475569;
+            margin-bottom: 24px;
+            display: flex;
+            justify-content: space-between;
+        }
+        .btn-test {
+            background-color: #0B3D91;
+            color: #FFFFFF;
+            border: none;
+            border-radius: 8px;
+            padding: 12px 24px;
+            font-size: 15px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background-color 0.15s ease;
+            width: 100%;
+        }
+        .btn-test:hover:not(:disabled) {
+            background-color: #092c69;
+        }
+        .btn-test:disabled {
+            background-color: #94A3B8;
+            cursor: not-allowed;
+        }
+        .status-section {
+            margin-top: 24px;
+            padding-top: 20px;
+            border-top: 1px solid #E2E8F0;
+        }
+        .status-label {
+            font-size: 12px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            color: #64748B;
+            margin-bottom: 6px;
+        }
+        .status-value {
+            font-size: 14px;
+            font-weight: 500;
+            color: #334155;
+        }
+        .status-value.loading {
+            color: #0284C7;
+        }
+        .status-value.success {
+            color: #16A34A;
+        }
+        .status-value.error {
+            color: #DC2626;
+        }
+        .output-box {
+            margin-top: 16px;
+            padding: 16px;
+            border-radius: 8px;
+            font-family: monospace;
+            font-size: 13px;
+            white-space: pre-wrap;
+            word-break: break-word;
+            display: none;
+        }
+        .output-box.success {
+            display: block;
+            background-color: #F0FDF4;
+            border: 1px solid #BBF7D0;
+            color: #15803D;
+        }
+        .output-box.error {
+            display: block;
+            background-color: #FEF2F2;
+            border: 1px solid #FECACA;
+            color: #B91C1C;
+        }
+    </style>
+</head>
+<body>
+    <div class="test-card">
+        <div class="brand">AI CivicFix</div>
+        <h1>Gemini Connection Test</h1>
+        <p class="subtitle">Validates integration between Firebase AI Logic, GoogleAIBackend, and Gemini.</p>
+
+        <div class="config-badge">
+            <span>Model: <strong id="model-name">Loading...</strong></span>
+            <span>App Check: <strong>Debug Provider</strong></span>
+        </div>
+
+        <button id="test-btn" class="btn-test">Test Gemini</button>
+
+        <div class="status-section">
+            <div class="status-label">Status:</div>
+            <div id="status-text" class="status-value">Waiting for test...</div>
+            <div id="response-box" class="output-box"></div>
+            <div id="error-box" class="output-box"></div>
+        </div>
+    </div>
+
+    <script type="module">
+        import { GEMINI_MODEL, testGeminiConnection } from "./js/ai-service.js";
+
+        const modelNameEl = document.getElementById("model-name");
+        const testBtn = document.getElementById("test-btn");
+        const statusText = document.getElementById("status-text");
+        const responseBox = document.getElementById("response-box");
+        const errorBox = document.getElementById("error-box");
+
+        modelNameEl.textContent = GEMINI_MODEL;
+
+        testBtn.addEventListener("click", async () => {
+            testBtn.disabled = true;
+            statusText.className = "status-value loading";
+            statusText.textContent = "Connecting to Gemini via Firebase AI Logic...";
+            responseBox.className = "output-box";
+            responseBox.style.display = "none";
+            errorBox.className = "output-box";
+            errorBox.style.display = "none";
+
+            try {
+                const response = await testGeminiConnection();
+                statusText.className = "status-value success";
+                statusText.textContent = "Connected successfully!";
+                responseBox.textContent = response;
+                responseBox.className = "output-box success";
+            } catch (err) {
+                console.error("Test failed:", err);
+                statusText.className = "status-value error";
+                statusText.textContent = "Connection failed";
+                errorBox.textContent = err.message || String(err);
+                errorBox.className = "output-box error";
+            } finally {
+                testBtn.disabled = false;
+            }
+        });
+    </script>
+</body>
+</html>

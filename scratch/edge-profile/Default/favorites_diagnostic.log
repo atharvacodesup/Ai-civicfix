@@ -1,0 +1,90 @@
+2026-10-03 18:58:09.106: [INFO] CurrentProfilePath: C:\Users\Atharv Naik\Desktop\AI-CivicFix-Manual-UI\scratch\edge-profile\Default
+2026-10-03 18:58:09.106: [INFO] Profiles total count: 1
+2026-10-03 18:58:09.106: [INFO] Profile: name=Profile 1 path=C:\Users\Atharv Naik\Desktop\AI-CivicFix-Manual-UI\scratch\edge-profile\Default lastActive=null
+2026-10-03 18:58:09.106: [INFO] LastUsedProfileDir: C:\Users\Atharv Naik\Desktop\AI-CivicFix-Manual-UI\scratch\edge-profile\Default
+2026-10-03 18:58:09.106: [INFO] VisibilityChanged: 0
+2026-10-03 18:58:09.118: [INFO] RecordSyncInitDuration has_sync_been_enabled: 0 state: 0
+2026-10-03 18:58:09.120: [INFO] RecordSyncInitDuration has_sync_been_enabled: 0 state: 0
+2026-10-03 18:58:09.121: [INFO] RecordSyncInitDuration has_sync_been_enabled: 0 state: 0
+2026-10-03 18:58:09.123: [INFO] RecordSyncInitDuration has_sync_been_enabled: 0 state: 0
+2026-10-03 18:58:09.124: [INFO] RecordSyncInitDuration has_sync_been_enabled: 0 state: 0
+2026-10-03 18:58:09.125: [INFO] RecordSyncInitDuration has_sync_been_enabled: 0 state: 0
+2026-10-03 18:58:09.127: [INFO] RecordSyncInitDuration has_sync_been_enabled: 0 state: 0
+2026-10-03 18:58:09.128: [INFO] RecordSyncInitDuration has_sync_been_enabled: 0 state: 0
+2026-10-03 18:58:09.129: [INFO] RecordSyncInitDuration has_sync_been_enabled: 0 state: 0
+2026-10-03 18:58:09.129: [INFO] RecordSyncInitDuration has_sync_been_enabled: 0 state: 0
+2026-10-03 18:58:09.148: [INFO] BookmarkNodeAdded, ABU: 0
+2026-10-03 18:58:09.148: [INFO] BookmarkNodeAdded, ABU: 0
+2026-10-03 18:58:09.148: [INFO] BookmarkNodeAdded, ABU: 0
+2026-10-03 18:58:09.148: [INFO] OnDoneLoading sync enabled: 0
+2026-10-03 18:58:09.148: [INFO] BookmarkModelLoaded, ids_reassigned: 0
+2026-10-03 18:58:09.148: [INFO] BookmarksLoadDropped droppedNodes=0
+2026-10-03 18:58:09.148: [INFO] BookmarksSnapshot Startup total=3 bar=3 other=0 mobile=0 showBar=0 showBarNTP=1
+2026-10-03 18:58:09.150: [INFO] RecordSyncInitDuration has_sync_been_enabled: 0 state: 0
+2026-10-03 18:58:12.654: [INFO] RecordSyncInitDuration has_sync_been_enabled: 0 state: 0
+2026-10-03 18:58:12.662: [INFO] RecordSyncInitDuration has_sync_been_enabled: 0 state: 3
+2026-10-03 18:58:12.665: [INFO] Primary account changed.
+2026-10-03 18:58:12.665: [INFO] OnPrimaryAccountChanged PrimaryAccountChangeEvent::Type::kSet
+2026-10-03 18:58:12.680: [INFO] RecordSyncInitDuration has_sync_been_enabled: 0 state: 3
+2026-10-03 18:59:56.473: [INFO] CurrentProfilePath: C:\Users\Atharv Naik\Desktop\AI-CivicFix-Manual-UI\scratch\edge-profile\Default
+2026-10-03 18:59:56.473: [INFO] Profiles total count: 1
+2026-10-03 18:59:56.473: [INFO] Profile: name=Profile 1 path=C:\Users\Atharv Naik\Desktop\AI-CivicFix-Manual-UI\scratch\edge-profile\Default lastActive=null
+2026-10-03 18:59:56.473: [INFO] LastUsedProfileDir: C:\Users\Atharv Naik\Desktop\AI-CivicFix-Manual-UI\scratch\edge-profile\Default
+2026-10-03 18:59:56.473: [INFO] VisibilityChanged: 0
+2026-10-03 18:59:56.497: [INFO] OnDoneLoading sync enabled: 0
+2026-10-03 18:59:56.497: [INFO] BookmarkModelLoaded, ids_reassigned: 0
+2026-10-03 18:59:56.497: [INFO] BookmarksLoadDropped droppedNodes=0
+2026-10-03 18:59:56.497: [INFO] BookmarksSnapshot Startup total=3 bar=3 other=0 mobile=0 showBar=0 showBarNTP=1
+2026-10-03 18:59:56.523: [INFO] RecordSyncInitDuration has_sync_been_enabled: 0 state: 3
+2026-10-03 18:59:56.554: [INFO] BookmarkNodeAdded, ABU: 0
+2026-10-03 18:59:56.554: [INFO] BookmarkNodeAdded, ABU: 0
+2026-10-03 18:59:56.554: [INFO] BookmarkNodeAdded, ABU: 0
+2026-10-03 18:59:56.567: [INFO] RecordSyncInitDuration has_sync_been_enabled: 0 state: 3
+2026-10-03 18:59:58.857: [INFO] RecordSyncInitDuration has_sync_been_enabled: 0 state: 3
+2026-10-03 18:59:58.858: [INFO] RecordSyncInitDuration has_sync_been_enabled: 0 state: 3
+2026-10-03 18:59:58.860: [INFO] RecordSyncInitDuration has_sync_been_enabled: 0 state: 3
+2026-10-03 18:59:58.862: [INFO] RecordSyncInitDuration has_sync_been_enabled: 0 state: 3
+2026-10-03 18:59:58.864: [INFO] RecordSyncInitDuration has_sync_been_enabled: 0 state: 3
+2026-10-03 18:59:58.865: [INFO] RecordSyncInitDuration has_sync_been_enabled: 0 state: 3
+2026-10-03 18:59:58.866: [INFO] RecordSyncInitDuration has_sync_been_enabled: 0 state: 5
+2026-10-03 18:59:58.867: [INFO] RecordSyncInitDuration has_sync_been_enabled: 0 state: 5
+2026-10-03 18:59:59.773: [INFO] RecordSyncInitDuration has_sync_been_enabled: 0 state: 5
+2026-10-03 18:59:59.781: [INFO] RecordSyncInitDuration has_sync_been_enabled: 0 state: 5
+2026-10-03 19:00:00.322: [INFO] RecordSyncInitDuration has_sync_been_enabled: 0 state: 5
+2026-10-03 19:00:01.014: [INFO] RecordSyncInitDuration has_sync_been_enabled: 0 state: 5
+2026-10-03 19:00:01.016: [INFO] RecordSyncInitDuration has_sync_been_enabled: 0 state: 6
+2026-10-03 19:00:01.018: [INFO] RecordSyncInitDuration has_sync_been_enabled: 0 state: 6
+2026-10-03 19:00:03.218: [INFO] RecordSyncInitDuration has_sync_been_enabled: 0 state: 6
+2026-10-03 19:00:03.219: [INFO] RecordSyncInitDuration has_sync_been_enabled: 0 state: 6
+2026-10-03 19:00:03.430: [INFO] RecordSyncInitDuration has_sync_been_enabled: 0 state: 6
+2026-10-03 21:42:00.589: [INFO] CurrentProfilePath: C:\Users\Atharv Naik\Desktop\AI-CivicFix-Manual-UI\scratch\edge-profile\Default
+2026-10-03 21:42:00.589: [INFO] Profiles total count: 1
+2026-10-03 21:42:00.589: [INFO] Profile: name=Profile 1 path=C:\Users\Atharv Naik\Desktop\AI-CivicFix-Manual-UI\scratch\edge-profile\Default lastActive=null
+2026-10-03 21:42:00.589: [INFO] LastUsedProfileDir: C:\Users\Atharv Naik\Desktop\AI-CivicFix-Manual-UI\scratch\edge-profile\Default
+2026-10-03 21:42:00.589: [INFO] VisibilityChanged: 0
+2026-10-03 21:42:00.626: [INFO] BookmarkNodeAdded, ABU: 0
+2026-10-03 21:42:00.626: [INFO] BookmarkNodeAdded, ABU: 0
+2026-10-03 21:42:00.626: [INFO] BookmarkNodeAdded, ABU: 0
+2026-10-03 21:42:00.626: [INFO] OnDoneLoading sync enabled: 0
+2026-10-03 21:42:00.626: [INFO] BookmarkModelLoaded, ids_reassigned: 0
+2026-10-03 21:42:00.626: [INFO] BookmarksLoadDropped droppedNodes=0
+2026-10-03 21:42:00.626: [INFO] BookmarksSnapshot Startup total=9 bar=9 other=0 mobile=0 showBar=0 showBarNTP=1
+2026-10-03 21:42:00.642: [INFO] RecordSyncInitDuration has_sync_been_enabled: 0 state: 3
+2026-10-03 21:42:00.665: [INFO] RecordSyncInitDuration has_sync_been_enabled: 0 state: 3
+2026-10-03 21:42:02.989: [INFO] RecordSyncInitDuration has_sync_been_enabled: 0 state: 3
+2026-10-03 21:42:02.991: [INFO] RecordSyncInitDuration has_sync_been_enabled: 0 state: 3
+2026-10-03 21:42:02.993: [INFO] RecordSyncInitDuration has_sync_been_enabled: 0 state: 3
+2026-10-03 21:42:02.996: [INFO] RecordSyncInitDuration has_sync_been_enabled: 0 state: 3
+2026-10-03 21:42:02.997: [INFO] RecordSyncInitDuration has_sync_been_enabled: 0 state: 3
+2026-10-03 21:42:02.999: [INFO] RecordSyncInitDuration has_sync_been_enabled: 0 state: 3
+2026-10-03 21:42:03.001: [INFO] RecordSyncInitDuration has_sync_been_enabled: 0 state: 5
+2026-10-03 21:42:03.004: [INFO] RecordSyncInitDuration has_sync_been_enabled: 0 state: 5
+2026-10-03 21:42:04.161: [INFO] RecordSyncInitDuration has_sync_been_enabled: 0 state: 5
+2026-10-03 21:42:04.164: [INFO] RecordSyncInitDuration has_sync_been_enabled: 0 state: 5
+2026-10-03 21:42:04.727: [INFO] RecordSyncInitDuration has_sync_been_enabled: 0 state: 5
+2026-10-03 21:42:05.301: [INFO] RecordSyncInitDuration has_sync_been_enabled: 0 state: 5
+2026-10-03 21:42:05.304: [INFO] RecordSyncInitDuration has_sync_been_enabled: 0 state: 6
+2026-10-03 21:42:05.306: [INFO] RecordSyncInitDuration has_sync_been_enabled: 0 state: 6
+2026-10-03 21:42:06.904: [INFO] RecordSyncInitDuration has_sync_been_enabled: 0 state: 6
+2026-10-03 21:42:06.905: [INFO] RecordSyncInitDuration has_sync_been_enabled: 0 state: 6
+2026-10-03 21:42:07.105: [INFO] RecordSyncInitDuration has_sync_been_enabled: 0 state: 6

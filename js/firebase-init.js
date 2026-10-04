@@ -19,7 +19,7 @@ if (hostname === "localhost" || hostname === "127.0.0.1") {
   provider = new ReCaptchaV3Provider("6LeIxAcTAAAAAJcZVRqyHh71UMIEGNQ_MXjiZKhI");
 } else {
   // Production reCAPTCHA Enterprise provider
-  const RECAPTCHA_ENTERPRISE_SITE_KEY = "REPLACE_WITH_PROD_SITE_KEY"; // TODO: replace with actual site key
+  const RECAPTCHA_ENTERPRISE_SITE_KEY = "6Lee590tAAAAAEkr-ChRTiCg8gRhhF9G6tRfGR8a"; // TODO: replace with actual site key
   provider = new ReCaptchaEnterpriseProvider(RECAPTCHA_ENTERPRISE_SITE_KEY);
 }
 let appCheck = null;
